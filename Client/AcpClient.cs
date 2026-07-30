@@ -9,11 +9,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Agentic.ACPLibrary.Client;
 
-public class AcpClient
+public class AcpClient : IAcpClient
 {
     private readonly IAgentTransport _transport;
     private readonly IJsonRpcDispatcher _dispatcher;
     private readonly ILogger<AcpClient> _logger;
+    private bool _disposed;
 
     public InitializeResponse? AgentInfo { get; private set; }
     public bool IsInitialized => AgentInfo is not null;
@@ -224,10 +225,27 @@ public class AcpClient
 
     public async Task ShutdownAsync()
     {
+        if (_disposed) return;
+        _disposed = true;
         _logger.LogInformation("Shutting down ACP client");
         await _dispatcher.DisconnectAsync();
         await _transport.StopAsync();
     }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        await ShutdownAsync();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc />
+    public void RegisterRequestHandler(string method, Func<JsonRpcRequest, Task<JsonRpcResponse>> handler)
+        => _dispatcher.RegisterRequestHandler(method, handler);
+
+    /// <inheritdoc />
+    public void RegisterNotificationHandler(string method, Func<JsonRpcNotification, Task> handler)
+        => _dispatcher.RegisterNotificationHandler(method, handler);
 
     private void RegisterTerminalHandlers()
     {

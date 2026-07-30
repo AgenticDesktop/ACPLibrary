@@ -16,6 +16,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IJsonRpcDispatcher, JsonRpcDispatcher>();
         services.AddTransient<IRequestTracker, RequestTracker>();
         services.AddSingleton<AcpClient>();
+        services.AddSingleton<IAcpClient>(sp => sp.GetRequiredService<AcpClient>());
         return services;
     }
 }
