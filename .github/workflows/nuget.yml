@@ -16,7 +16,7 @@ jobs:
           user: ${{ vars.NUGET_USER }}
       - name: GitHub Packages login
         run: |
-          dotnet nuget add source --username ShihaoShen-Creator --password ${{ secrets.BOT_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/AgenticDesktop/index.json"
+          dotnet nuget add source --username ShihaoShen-Automation-Bot --password ${{ secrets.BOT_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/AgenticDesktop/index.json"
       - name: Checkout
         uses: actions/checkout@v7
       - name: Setup .NET
