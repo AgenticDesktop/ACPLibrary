@@ -41,6 +41,9 @@ public sealed class StdioAgentTransport : IAgentTransport
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
+            // BOM-less UTF-8 for stdin: default is the OS ANSI codepage (garbles non-ASCII prompts),
+            // and Encoding.UTF8 would emit a BOM that corrupts the agent's first JSON-RPC line
+            StandardInputEncoding = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
             StandardOutputEncoding = System.Text.Encoding.UTF8,
             StandardErrorEncoding = System.Text.Encoding.UTF8
         };
