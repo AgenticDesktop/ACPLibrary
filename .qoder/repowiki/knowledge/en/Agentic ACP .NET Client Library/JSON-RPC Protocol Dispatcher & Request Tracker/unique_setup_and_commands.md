@@ -1,0 +1,1 @@
+No build or test commands are defined in this leaf module; it is consumed as part of the Agentic.ACPLibrary package and relies on `JsonOptions.Default` from the `Agentic.ACPLibrary.JsonRpc` namespace for shared serializer configuration.

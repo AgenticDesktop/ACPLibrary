@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Agentic.ACPLibrary.Models;
 
-// 以 type 字段作为多态判别符；未识别的内容类型回退为基类，避免 Agent 发送新类型时报错
+// Uses type field as polymorphic discriminator; unrecognized content types fall back to base type to avoid errors when Agent sends new types
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type",
     IgnoreUnrecognizedTypeDiscriminators = true,
     UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToBaseType)]

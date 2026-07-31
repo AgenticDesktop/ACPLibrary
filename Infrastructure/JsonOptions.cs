@@ -17,7 +17,7 @@ public static class JsonOptions
             PropertyNameCaseInsensitive = true,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             WriteIndented = false,
-            // 多态判别符（如 sessionUpdate）不一定是 JSON 对象的第一个字段
+            // Polymorphic discriminator (e.g. sessionUpdate) is not necessarily the first property of a JSON object
             AllowOutOfOrderMetadataProperties = true
         };
         options.Converters.Add(new JsonRpcMessageConverter());

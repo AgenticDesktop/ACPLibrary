@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: protocol
+title: JSON-RPC Protocol Dispatcher & Request Tracker
+scope:
+    - Protocol/
+source_files: []
+depends_on: []
+related_to:
+    - path: client
+    - path: json_rpc
+    - path: models

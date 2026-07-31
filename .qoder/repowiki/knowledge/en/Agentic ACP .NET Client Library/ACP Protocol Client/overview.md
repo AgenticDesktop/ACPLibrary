@@ -1,0 +1,1 @@
+JSON-RPC-based ACP protocol client that initializes a connection to an agent, manages sessions, and dispatches incoming permission, filesystem, and terminal requests to pluggable UI-layer handlers.

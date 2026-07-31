@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace Agentic.ACPLibrary.Transport;
 
 /// <summary>
-/// 基于子进程 stdio 的传输实现。
+/// Transport implementation based on child process stdio.
 /// </summary>
 public sealed class StdioAgentTransport : IAgentTransport
 {
@@ -125,12 +125,12 @@ public sealed class StdioAgentTransport : IAgentTransport
             {
                 var line = await reader.ReadLineAsync(ct);
                 if (line is null) break;
-                // stderr 用于诊断，暂不处理
+                // stderr used for diagnostics, not handled for now
             }
         }
         catch
         {
-            // stderr 读取失败可忽略
+            // stderr read failure can be ignored
         }
     }
 

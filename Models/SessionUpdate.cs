@@ -4,7 +4,7 @@ using Agentic.ACPLibrary.Models.Enums;
 
 namespace Agentic.ACPLibrary.Models;
 
-// 以 sessionUpdate 字段作为多态判别符；未识别的更新类型回退为基类，避免 Agent 发送新类型时报错
+// Uses sessionUpdate field as polymorphic discriminator; unrecognized update types fall back to base type to avoid errors when Agent sends new types
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "sessionUpdate",
     IgnoreUnrecognizedTypeDiscriminators = true,
     UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToBaseType)]

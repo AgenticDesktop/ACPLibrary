@@ -1,0 +1,71 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: zh-CN
+branch: main
+nodes_managed: true
+exported_at: "2026-07-31T06:23:44Z"
+modules:
+    "":
+        dir_name: Agentic ACP .NET 客户端库
+        title: Agentic ACP .NET 客户端库
+        scope:
+            - README.md
+            - .gitignore
+            - Agentic.ACPLibrary.csproj
+            - LICENSE
+        source_files: []
+        children:
+            - client
+            - jsonrpc
+            - models
+            - protocol
+        depends_on: []
+        related_to: []
+    client:
+        dir_name: ACP 协议客户端（Agent 通信与能力桥接）
+        title: ACP 协议客户端（Agent 通信与能力桥接）
+        scope:
+            - Client/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: jsonrpc
+            - path: models
+            - path: protocol
+    jsonrpc:
+        dir_name: JSON-RPC 2.0 消息模型与序列化
+        title: JSON-RPC 2.0 消息模型与序列化
+        scope:
+            - JsonRpc/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: client
+            - path: models
+            - path: protocol
+    models:
+        dir_name: ACP 协议数据模型与枚举
+        title: ACP 协议数据模型与枚举
+        scope:
+            - Models/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: client
+            - path: jsonrpc
+            - path: protocol
+    protocol:
+        dir_name: JSON-RPC 协议分发器与请求跟踪
+        title: JSON-RPC 协议分发器与请求跟踪
+        scope:
+            - Protocol/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: client
+            - path: jsonrpc
+            - path: models

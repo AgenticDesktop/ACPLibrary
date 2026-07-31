@@ -1,0 +1,1 @@
+Defines the JSON-RPC 2.0 message types (request, response, notification, error) and a System.Text.Json converter that dispatches deserialization based on the presence of method/id/result/error fields.

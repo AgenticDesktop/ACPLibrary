@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: client
+title: ACP Protocol Client
+scope:
+    - Client/
+source_files: []
+depends_on: []
+related_to:
+    - path: json_rpc
+    - path: models
+    - path: protocol

@@ -1,0 +1,1 @@
+No build or setup script — this is a pure library namespace consumed by registering `JsonRpcMessageConverter` in `JsonSerializerOptions`.

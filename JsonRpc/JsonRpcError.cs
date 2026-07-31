@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Agentic.ACPLibrary.JsonRpc;
 
-/// <summary>JSON-RPC 2.0 错误对象</summary>
+/// <summary>JSON-RPC 2.0 error object</summary>
 public record JsonRpcError
 {
     [JsonPropertyName("code")]

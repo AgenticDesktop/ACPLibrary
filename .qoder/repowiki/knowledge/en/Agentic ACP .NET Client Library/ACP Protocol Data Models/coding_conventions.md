@@ -1,0 +1,5 @@
+- All serializable data types are defined as C# `record` with `init`-only properties, making them immutable and value-equality based.
+- Every public property is annotated with `[JsonPropertyName("snake_case")]` to map PascalCase C# members to snake_case JSON fields.
+- Optional properties use nullable reference types and are decorated with `[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]` so nulls are omitted from output.
+- Enums in `Models/Enums/` are globally converted to lowercase strings using `[JsonConverter(typeof(JsonStringEnumConverter))]` with explicit `[JsonStringEnumMemberName]` mappings.
+- Polymorphic content types are modeled with a base class (`ContentBlock`) annotated with `[JsonPolymorphic(TypeDiscriminatorPropertyName = "type", IgnoreUnrecognizedTypeDiscriminators = true, UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToBaseType)]` and `[JsonDerivedType]` entries for each variant.

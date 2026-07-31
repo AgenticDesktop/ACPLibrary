@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: jsonrpc
+title: JSON-RPC 2.0 消息模型与序列化
+scope:
+    - JsonRpc/
+source_files: []
+depends_on: []
+related_to:
+    - path: client
+    - path: models
+    - path: protocol

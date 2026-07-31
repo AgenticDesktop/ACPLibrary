@@ -9,7 +9,7 @@ namespace Agentic.ACPLibrary.Infrastructure;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// 注册 ACP 客户端服务到 DI 容器。
+    /// Registers ACP client services into the DI container.
     /// </summary>
     public static IServiceCollection AddAcpClient(this IServiceCollection services)
     {

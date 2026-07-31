@@ -1,0 +1,1 @@
+C# records with `System.Text.Json` (`Utf8JsonReader`, `JsonDocument`, `JsonElement`) and a custom `JsonConverter<T>` for polymorphic JSON-RPC message handling.

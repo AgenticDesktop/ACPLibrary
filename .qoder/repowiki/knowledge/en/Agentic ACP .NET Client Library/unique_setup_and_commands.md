@@ -1,0 +1,1 @@
+Build and pack via standard dotnet CLI (`dotnet build`, `dotnet pack`); the project is configured as a packable NuGet package with `IsPackable=true`, version 0.1.0, MIT license, and README/LICENSE embedded in the package.

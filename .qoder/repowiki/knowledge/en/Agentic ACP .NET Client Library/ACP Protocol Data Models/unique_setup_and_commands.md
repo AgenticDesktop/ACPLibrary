@@ -1,0 +1,1 @@
+No build or setup script is present; models compile as part of the parent .NET project that references this directory.

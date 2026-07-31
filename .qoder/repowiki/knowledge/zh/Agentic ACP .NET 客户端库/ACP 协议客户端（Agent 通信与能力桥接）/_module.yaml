@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: client
+title: ACP 协议客户端（Agent 通信与能力桥接）
+scope:
+    - Client/
+source_files: []
+depends_on: []
+related_to:
+    - path: jsonrpc
+    - path: models
+    - path: protocol

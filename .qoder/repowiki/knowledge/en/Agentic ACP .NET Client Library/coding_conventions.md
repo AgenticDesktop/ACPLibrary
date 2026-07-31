@@ -1,0 +1,4 @@
+- Public surface exposed through interfaces (`IAcpClient`, `IAgentTransport`, `IJsonRpcDispatcher`, `IPermissionHandler`, etc.) with concrete default implementations (`AcpClient`, `StdioAgentTransport`, `JsonRpcDispatcher`).
+- All protocol data modeled as immutable C# records/classes annotated with `[JsonPropertyName]` to map directly to ACP JSON fields.
+- Extensibility points are assigned via properties or `Register*Handler` methods on `AcpClient` rather than constructor parameters, keeping initialization fluent.
+- Logging goes through `ILogger<T>` from `Microsoft.Extensions.Logging.Abstractions` instead of direct console output.

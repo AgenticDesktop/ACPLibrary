@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: ""
+title: Agentic ACP .NET Client Library
+scope:
+    - README.md
+    - .gitignore
+    - Agentic.ACPLibrary.csproj
+    - LICENSE
+source_files: []
+depends_on: []
+related_to: []

@@ -1,0 +1,1 @@
+C# records/classes serialized via `System.Text.Json`; polymorphic deserialization through `[JsonPolymorphic]` with `type` discriminator, and string-based enum serialization via `JsonStringEnumConverter` / `JsonStringEnumMemberName`.

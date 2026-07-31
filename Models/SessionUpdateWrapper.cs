@@ -3,8 +3,8 @@ using System.Text.Json.Serialization;
 namespace Agentic.ACPLibrary.Models;
 
 /// <summary>
-/// session/update 通知的 params 包装。
-/// 实际 update 字段是多态的 SessionUpdate。
+/// Params wrapper for session/update notifications.
+/// The actual update field is a polymorphic SessionUpdate.
 /// </summary>
 public record SessionUpdateParams
 {

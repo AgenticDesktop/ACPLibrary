@@ -1,0 +1,5 @@
+- Incoming JSON-RPC request handlers are registered during `InitializeAsync` by calling `_dispatcher.RegisterRequestHandler(method, async request => { ... })` and returning a `JsonRpcResponse` constructed from `JsonSerializer.SerializeToElement` using `JsonOptions.Default`.
+- Optional handler dependencies are exposed as nullable properties (`IPermissionHandler?`, `IFileSystemHandler?`, `ITerminalHandler?`) and each request handler checks `if (XxxHandler is null)` before delegating, returning a `-32601` error response when unavailable.
+- All public asynchronous methods accept a `CancellationToken ct = default` parameter and propagate it to underlying transport/dispatcher calls.
+- Logging uses `ILogger<AcpClient>` with structured messages (e.g., `{ExitCode}`, `{AgentName}`, `{SessionId}`) and falls back to `NullLogger<AcpClient>.Instance` when no logger is injected.
+- Events use `Func<T, Task>` delegates (`SessionUpdated`, `AgentProcessExited`) and are invoked only after null-checking to allow optional subscription.

@@ -7,7 +7,7 @@ public record SessionNewRequest
     [JsonPropertyName("cwd")]
     public string Cwd { get; init; } = string.Empty;
 
-    // ACP 规范要求 mcpServers 为必填数组，缺省时发送空数组（copilot 等 Agent 会校验并返回 Invalid params）
+    // ACP spec requires mcpServers as a required array; send empty array when omitted (agents like copilot validate and return Invalid params)
     [JsonPropertyName("mcpServers")]
     public List<McpServerConfig> McpServers { get; init; } = new();
 }

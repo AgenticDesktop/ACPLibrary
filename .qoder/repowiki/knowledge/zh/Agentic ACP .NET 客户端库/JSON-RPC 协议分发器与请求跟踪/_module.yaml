@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: protocol
+title: JSON-RPC 协议分发器与请求跟踪
+scope:
+    - Protocol/
+source_files: []
+depends_on: []
+related_to:
+    - path: client
+    - path: jsonrpc
+    - path: models

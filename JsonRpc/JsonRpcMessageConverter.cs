@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace Agentic.ACPLibrary.JsonRpc;
 
 /// <summary>
-/// 通过字段存在与否区分 JSON-RPC 消息类型的转换器。
+/// Converter that distinguishes JSON-RPC message types by field presence.
 /// </summary>
 public class JsonRpcMessageConverter : JsonConverter<JsonRpcMessage>
 {
@@ -59,7 +59,7 @@ public class JsonRpcMessageConverter : JsonConverter<JsonRpcMessage>
         if (_innerOptions is not null) return _innerOptions;
 
         _innerOptions = new JsonSerializerOptions(options);
-        // 移除此 converter 避免递归
+        // Remove this converter to avoid recursion
         for (int i = _innerOptions.Converters.Count - 1; i >= 0; i--)
         {
             if (_innerOptions.Converters[i] is JsonRpcMessageConverter)

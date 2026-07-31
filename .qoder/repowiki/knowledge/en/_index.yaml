@@ -1,0 +1,69 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: en-US
+branch: main
+nodes_managed: true
+exported_at: "2026-07-31T05:40:15Z"
+modules:
+    "":
+        dir_name: Agentic ACP .NET Client Library
+        title: Agentic ACP .NET Client Library
+        scope:
+            - README.md
+            - .gitignore
+            - Agentic.ACPLibrary.csproj
+            - LICENSE
+        source_files: []
+        children:
+            - client
+            - json_rpc
+            - models
+            - protocol
+        depends_on: []
+        related_to: []
+    client:
+        dir_name: ACP Protocol Client
+        title: ACP Protocol Client
+        scope:
+            - Client/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: json_rpc
+            - path: models
+            - path: protocol
+    json_rpc:
+        dir_name: JSON-RPC 2.0 Message Model & Serializer
+        title: JSON-RPC 2.0 Message Model & Serializer
+        scope:
+            - JsonRpc/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: client
+            - path: protocol
+    models:
+        dir_name: ACP Protocol Data Models
+        title: ACP Protocol Data Models
+        scope:
+            - Models/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: client
+            - path: protocol
+    protocol:
+        dir_name: JSON-RPC Protocol Dispatcher & Request Tracker
+        title: JSON-RPC Protocol Dispatcher & Request Tracker
+        scope:
+            - Protocol/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: client
+            - path: json_rpc
+            - path: models

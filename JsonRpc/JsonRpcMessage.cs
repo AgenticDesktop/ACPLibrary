@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace Agentic.ACPLibrary.JsonRpc;
 
 /// <summary>
-/// JSON-RPC 2.0 消息基类型。通过字段存在与否区分请求/响应/通知。
+/// JSON-RPC 2.0 base message type. Distinguishes request/response/notification by field presence.
 /// </summary>
 public record JsonRpcMessage
 {

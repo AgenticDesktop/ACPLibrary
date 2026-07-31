@@ -1,0 +1,1 @@
+No build or test scripts are present in this scope; usage requires constructing `AcpClient` with an `IAgentTransport` and `IJsonRpcDispatcher`, setting one or more handler properties (`PermissionHandler`, `FileSystemHandler`, `TerminalHandler`), then calling `InitializeAsync` before any session operations.

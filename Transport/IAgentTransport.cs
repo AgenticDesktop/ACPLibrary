@@ -1,29 +1,29 @@
 namespace Agentic.ACPLibrary.Transport;
 
 /// <summary>
-/// ACP Agent 传输层抽象。支持 stdio、mock 等实现。
+/// ACP Agent transport abstraction. Supports stdio, mock, and other implementations.
 /// </summary>
 public interface IAgentTransport
 {
-    /// <summary>启动传输（如启动子进程）</summary>
+    /// <summary>Start the transport (e.g. launch a child process)</summary>
     Task StartAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>发送一行 JSON-RPC 消息</summary>
+    /// <summary>Send a single line of JSON-RPC message</summary>
     Task SendAsync(string jsonLine, CancellationToken cancellationToken = default);
 
-    /// <summary>收到消息时触发。参数为原始 JSON 行。</summary>
+    /// <summary>Raised when a message is received. The parameter is the raw JSON line.</summary>
     event Func<string, Task>? MessageReceived;
 
-    /// <summary>传输层发生故障时触发。</summary>
+    /// <summary>Raised when the transport encounters a fault.</summary>
     event Func<Exception, Task>? TransportFaulted;
 
-    /// <summary>底层进程退出时触发。参数为退出码。</summary>
+    /// <summary>Raised when the underlying process exits. The parameter is the exit code.</summary>
     event Func<int, Task>? ProcessExited;
 
-    /// <summary>停止传输（关闭进程）</summary>
+    /// <summary>Stop the transport (shut down the process)</summary>
     Task StopAsync();
 
-    /// <summary>当前传输状态</summary>
+    /// <summary>Current transport state</summary>
     TransportState State { get; }
 }
 

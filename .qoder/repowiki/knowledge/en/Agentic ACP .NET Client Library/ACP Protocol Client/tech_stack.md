@@ -1,0 +1,1 @@
+C# with System.Text.Json for serialization, Microsoft.Extensions.Logging (with `NullLogger` fallback) for diagnostics, and async/await throughout. The client speaks JSON-RPC over an abstract `IAgentTransport` abstraction, enabling pluggable transports (e.g., stdio, pipes).

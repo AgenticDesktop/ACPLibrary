@@ -117,7 +117,7 @@ public class JsonRpcDispatcher : IJsonRpcDispatcher
         }
         catch (Exception)
         {
-            // 反序列化失败或 handler 异常，暂忽略
+            // Deserialization failure or handler exception, ignored for now
         }
     }
 }

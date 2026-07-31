@@ -19,22 +19,22 @@ public class AcpClient : IAcpClient
     public InitializeResponse? AgentInfo { get; private set; }
     public bool IsInitialized => AgentInfo is not null;
 
-    /// <summary>处理 Agent 发来的权限请求（由 UI 层实现）</summary>
+    /// <summary>Handles permission requests from the Agent (implemented by the UI layer).</summary>
     public IPermissionHandler? PermissionHandler { get; set; }
 
-    /// <summary>处理 Agent 发来的文件系统请求（由 UI 层实现）</summary>
+    /// <summary>Handles file system requests from the Agent (implemented by the UI layer).</summary>
     public IFileSystemHandler? FileSystemHandler { get; set; }
 
-    /// <summary>处理 Agent 发来的 terminal/* 请求（由 UI 层实现）</summary>
+    /// <summary>Handles terminal/* requests from the Agent (implemented by the UI layer).</summary>
     public ITerminalHandler? TerminalHandler { get; set; }
 
-    /// <summary>收到 session/update 通知时触发</summary>
+    /// <summary>Raised when a session/update notification is received.</summary>
     public event Func<SessionUpdate, Task>? SessionUpdated;
 
-    /// <summary>Agent 进程退出时触发。参数为退出码。</summary>
+    /// <summary>Raised when the Agent process exits. The parameter is the exit code.</summary>
     public event Func<int, Task>? AgentProcessExited;
 
-    /// <summary>当前会话 ID</summary>
+    /// <summary>Current session ID.</summary>
     public string? CurrentSessionId { get; private set; }
 
     public AcpClient(IAgentTransport transport, IJsonRpcDispatcher dispatcher, ILogger<AcpClient>? logger = null)
@@ -44,7 +44,7 @@ public class AcpClient : IAcpClient
         _logger = logger ?? NullLogger<AcpClient>.Instance;
     }
 
-    /// <summary>启动 transport 并完成 initialize 握手</summary>
+    /// <summary>Starts the transport and completes the initialize handshake.</summary>
     public async Task<InitializeResponse> InitializeAsync(CancellationToken ct = default)
     {
         _logger.LogInformation("Initializing ACP client...");
@@ -52,7 +52,7 @@ public class AcpClient : IAcpClient
         await _transport.StartAsync(ct);
         _dispatcher.Connect(_transport);
 
-        // 订阅进程退出事件
+        // Subscribe to process exit event
         _transport.ProcessExited += async exitCode =>
         {
             _logger.LogWarning("Agent process exited with code {ExitCode}", exitCode);
@@ -60,7 +60,7 @@ public class AcpClient : IAcpClient
                 await AgentProcessExited(exitCode);
         };
 
-        // 注册 session/update 通知处理器
+        // Register handler for session/update notifications
         _dispatcher.RegisterNotificationHandler("session/update", async notification =>
         {
             var updateParams = JsonSerializer.Deserialize<SessionUpdateParams>(
@@ -71,7 +71,7 @@ public class AcpClient : IAcpClient
             }
         });
 
-        // 注册权限请求处理
+        // Register handler for permission requests
         _dispatcher.RegisterRequestHandler("session/request_permission", async request =>
         {
             if (PermissionHandler is null)
@@ -98,7 +98,7 @@ public class AcpClient : IAcpClient
             };
         });
 
-        // 注册文件系统读取处理
+        // Register handler for file system read
         _dispatcher.RegisterRequestHandler("fs/read_text_file", async request =>
         {
             if (FileSystemHandler is null)
@@ -120,7 +120,7 @@ public class AcpClient : IAcpClient
             };
         });
 
-        // 注册文件系统写入处理
+        // Register handler for file system write
         _dispatcher.RegisterRequestHandler("fs/write_text_file", async request =>
         {
             if (FileSystemHandler is null)
@@ -143,7 +143,7 @@ public class AcpClient : IAcpClient
             };
         });
 
-        // 注册 terminal/* 处理
+        // Register terminal/* handlers
         RegisterTerminalHandlers();
 
         var initRequest = new InitializeRequest
@@ -172,7 +172,7 @@ public class AcpClient : IAcpClient
 
         _logger.LogInformation("ACP client initialized. Agent: {AgentName}", AgentInfo?.AgentInfo?.Name);
 
-        // 检查协议版本
+        // Check protocol version
         if (AgentInfo?.ProtocolVersion is not null && AgentInfo.ProtocolVersion != 1)
         {
             _logger.LogWarning("Protocol version mismatch: client=1, agent={AgentVersion}", AgentInfo.ProtocolVersion);
@@ -181,7 +181,7 @@ public class AcpClient : IAcpClient
         return AgentInfo!;
     }
 
-    /// <summary>创建新会话</summary>
+    /// <summary>Creates a new session.</summary>
     public async Task<string> CreateSessionAsync(string cwd, CancellationToken ct = default)
     {
         _logger.LogInformation("Creating new session in {Cwd}", cwd);
@@ -194,7 +194,7 @@ public class AcpClient : IAcpClient
         return CurrentSessionId;
     }
 
-    /// <summary>加载已有会话</summary>
+    /// <summary>Loads an existing session.</summary>
     public async Task<string> LoadSessionAsync(string sessionId, string cwd, CancellationToken ct = default)
     {
         _logger.LogInformation("Loading session {SessionId} in {Cwd}", sessionId, cwd);
@@ -204,7 +204,7 @@ public class AcpClient : IAcpClient
         return CurrentSessionId;
     }
 
-    /// <summary>发送提示并等待响应。流式更新通过 SessionUpdated 事件通知。</summary>
+    /// <summary>Sends a prompt and waits for the response. Streaming updates are delivered via the SessionUpdated event.</summary>
     public async Task<SessionPromptResponse> SendPromptAsync(
         string sessionId, List<ContentBlock> prompt, CancellationToken ct = default)
     {
@@ -215,7 +215,7 @@ public class AcpClient : IAcpClient
             response.Result!.Value.GetRawText(), JsonOptions.Default)!;
     }
 
-    /// <summary>取消正在进行的提示</summary>
+    /// <summary>Cancels an in-progress prompt.</summary>
     public async Task CancelSessionAsync(string sessionId, CancellationToken ct = default)
     {
         _logger.LogInformation("Cancelling session {SessionId}", sessionId);

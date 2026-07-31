@@ -1,0 +1,5 @@
+- Each public capability is exposed as an interface paired with a concrete implementation in the same file (e.g. `IJsonRpcDispatcher`/`JsonRpcDispatcher`, `IRequestTracker`/`RequestTracker`).
+- Incoming message routing uses `ConcurrentDictionary<string, Func<...>>` keyed by the JSON-RPC `method` string, with `TryGetValue` lookups before invoking handlers.
+- Outgoing JSON serialization goes through `JsonSerializer.Serialize(..., JsonOptions.Default)` rather than parameterless overloads, centralizing serializer options.
+- Async operations propagate cancellation via a `CancellationToken ct = default` parameter on every public async method.
+- Error responses from the wire are translated into domain exceptions (`JsonRpcException`) with explicit `Code` and `Message` properties instead of being rethrown as generic exceptions.

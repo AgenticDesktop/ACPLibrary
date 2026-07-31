@@ -1,0 +1,1 @@
+C# record and class models representing the JSON-serializable request, response, notification, and capability types for the Agentic ACP protocol session lifecycle.

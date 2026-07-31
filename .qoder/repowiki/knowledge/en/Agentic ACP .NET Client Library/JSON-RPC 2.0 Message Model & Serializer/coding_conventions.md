@@ -1,0 +1,4 @@
+- All public data is modeled as immutable C# records with `init`-only auto-properties.
+- JSON property names are mapped via `[JsonPropertyName(...)]` attributes matching the JSON-RPC 2.0 spec (`jsonrpc`, `method`, `id`, `params`, `result`, `error`, `code`, `message`, `data`).
+- Optional payload fields (`Params`, `Result`, `Data`) are declared as nullable `JsonElement?` and annotated with `[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]` to omit them when absent.
+- Each file declares only the `using System.Text.Json; using System.Text.Json.Serialization;` directives needed for its serializer attributes.

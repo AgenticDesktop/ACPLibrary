@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Agentic.ACPLibrary.JsonRpc;
 
-/// <summary>JSON-RPC 2.0 响应 (有 id + result 或 error)</summary>
+/// <summary>JSON-RPC 2.0 response (has id + result or error)</summary>
 public record JsonRpcResponse : JsonRpcMessage
 {
     [JsonPropertyName("id")]

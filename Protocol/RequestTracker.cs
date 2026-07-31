@@ -39,7 +39,7 @@ public class RequestTracker : IRequestTracker
     }
 }
 
-/// <summary>JSON-RPC 错误异常</summary>
+/// <summary>JSON-RPC error exception</summary>
 public class JsonRpcException : Exception
 {
     public int Code { get; }
