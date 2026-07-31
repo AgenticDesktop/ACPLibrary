@@ -3,6 +3,10 @@
 A .NET client library for the [Agent Client Protocol (ACP)](https://agentclientprotocol.com/).
 Communicate with ACP-compliant agents over stdio using JSON-RPC.
 
+## Get the Library
+
+This library is available on [NuGet.org](https://www.nuget.org/packages/ShihaoShen.Agentic.ACPLibrary/) and [GitHub Packages](https://github.com/AgenticDesktop/ACPLibrary/pkgs/nuget/ShihaoShen.Agentic.ACPLibrary).
+
 ## Quick Start
 
 ```csharp
