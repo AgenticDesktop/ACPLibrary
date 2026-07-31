@@ -16,6 +16,9 @@ jobs:
         id: login
         with:
           user: ${{ secrets.NUGET_USER }}
+      - name: GitHub Packages login
+        run: |
+          dotnet nuget add source --username ShihaoShen-Creator --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/AgenticDesktop/index.json"
       - name: Checkout
         uses: actions/checkout@v7
       - name: Setup .NET
@@ -26,4 +29,6 @@ jobs:
         run: |
           dotnet pack Agentic.ACPLibrary.csproj -c Release -o ./nupkg -p:VersionSuffix=nightly.${{ github.sha }}
       - name: Publish NuGet Package
-        run: dotnet nuget push .\nupkg\*.nupkg --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
+        run: |
+          dotnet nuget push .\nupkg\*.nupkg --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
+          dotnet nuget push .\nupkg\*.nupkg --source github --api-key ${{ secrets.GITHUB_TOKEN }}
