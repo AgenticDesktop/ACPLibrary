@@ -7,4 +7,4 @@ source_files: []
 depends_on: []
 related_to:
     - path: client
-    - path: protocol
+    - path: models

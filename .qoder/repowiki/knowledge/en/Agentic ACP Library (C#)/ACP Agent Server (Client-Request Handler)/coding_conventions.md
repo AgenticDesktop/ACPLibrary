@@ -1,0 +1,4 @@
+- Every public async method accepts an optional `CancellationToken ct = default` parameter and propagates it to downstream operations.
+- JSON-RPC request handlers follow a uniform pattern: deserialize params with `JsonSerializer.Deserialize<T>(..., JsonOptions.Default)`, delegate to the handler, serialize the result with `SerializeToElement(..., JsonOptions.Default)`, and catch exceptions to return a `JsonRpcError` with code -32603.
+- Outbound communication uses explicit string-named JSON-RPC methods (e.g. `session/update`, `session/request_permission`, `fs/read_text_file`, `terminal/create`) passed directly to `_dispatcher.SendNotificationAsync` / `SendRequestAsync`.
+- Extension points are exposed as interfaces (`IAcpAgent`, `IAcpAgentHandler`, `IAcpAgentContext`) with a corresponding abstract base class (`AcpAgentHandlerBase`) providing default implementations that subclasses may override.

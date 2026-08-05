@@ -18,7 +18,7 @@
     <PackageProjectUrl>https://github.com/AgenticDesktop/ACPLibrary</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <!-- samples contain standalone projects; keep them out of the library's default item globs -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);samples\**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);samples\**;tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

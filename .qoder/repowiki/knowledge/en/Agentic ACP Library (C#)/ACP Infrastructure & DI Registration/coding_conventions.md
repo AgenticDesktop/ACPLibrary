@@ -1,0 +1,4 @@
+- Static helper classes expose functionality through public static members only, with no instance state except lazy-initialized singletons.
+- DI registrations use the fluent `IServiceCollection` extension method pattern, returning the modified collection to support chaining.
+- Singleton services are registered twice: once by concrete type and once by interface, with the interface resolution delegated via `sp.GetRequiredService<T>()`.
+- Lazily computed shared resources use the `??=` null-coalescing assignment pattern to ensure thread-safe one-time initialization.

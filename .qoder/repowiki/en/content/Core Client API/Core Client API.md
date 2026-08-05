@@ -15,8 +15,23 @@
 - [ContentBlock.cs](file://Models/ContentBlock.cs)
 - [IAgentTransport.cs](file://Transport/IAgentTransport.cs)
 - [IJsonRpcDispatcher.cs](file://Protocol/IJsonRpcDispatcher.cs)
+- [JsonRpcDispatcher.cs](file://Protocol/JsonRpcDispatcher.cs)
+- [IRequestTracker.cs](file://Protocol/IRequestTracker.cs)
+- [RequestTracker.cs](file://Protocol/RequestTracker.cs)
+- [JsonRpcMessage.cs](file://JsonRpc/JsonRpcMessage.cs)
+- [JsonRpcRequest.cs](file://JsonRpc/JsonRpcRequest.cs)
+- [JsonRpcResponse.cs](file://JsonRpc/JsonRpcResponse.cs)
+- [JsonRpcNotification.cs](file://JsonRpc/JsonRpcNotification.cs)
 - [README.md](file://README.md)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Enhanced bidirectional communication pattern documentation with improved JSON-RPC infrastructure details
+- Updated session management improvements including better error handling and cancellation support
+- Added comprehensive coverage of notification system enhancements for streaming updates
+- Expanded documentation on transport layer improvements and request tracking mechanisms
+- Updated examples to reflect the enhanced bidirectional communication capabilities
 
 ## Table of Contents
 1. Introduction
@@ -30,13 +45,13 @@
 9. Conclusion
 
 ## Introduction
-This document provides comprehensive API documentation for the core client interfaces and implementation used to communicate with ACP-compliant agents over stdio using JSON-RPC. It focuses on the IAcpClient interface, the AcpClient implementation, event system, async patterns, cancellation token support, and thread safety considerations. It also includes usage examples, error handling guidance, and resource disposal best practices.
+This document provides comprehensive API documentation for the core client interfaces and implementation used to communicate with ACP-compliant agents over stdio using JSON-RPC. The library has been enhanced to support bidirectional communication patterns with improved session management and robust JSON-RPC infrastructure for notifications. It focuses on the IAcpClient interface, the AcpClient implementation, event system, async patterns, cancellation token support, and thread safety considerations. It also includes usage examples, error handling guidance, and resource disposal best practices.
 
 ## Project Structure
 The client library is organized into clear layers:
 - Client: Public contracts (IAcpClient) and default implementation (AcpClient), plus handler interfaces for permissions, file system, and terminal operations.
 - Models: Data contracts for requests, responses, streaming updates, capabilities, and content blocks.
-- Protocol: JSON-RPC dispatch abstraction and request tracking.
+- Protocol: JSON-RPC dispatch abstraction and request tracking with enhanced bidirectional communication support.
 - Transport: Abstraction and stdio-based transport for process communication.
 - Infrastructure: JSON serialization options and service collection extensions.
 
@@ -59,13 +74,23 @@ CB["ContentBlock + derived types"]
 end
 subgraph "Protocol"
 IJD["IJsonRpcDispatcher"]
+JRD["JsonRpcDispatcher"]
+IRT["IRequestTracker"]
+RT["RequestTracker"]
 end
 subgraph "Transport"
 IAT["IAgentTransport"]
 end
+subgraph "JSON-RPC"
+JRM["JsonRpcMessage"]
+JRR["JsonRpcRequest"]
+JRS["JsonRpcResponse"]
+JRN["JsonRpcNotification"]
+end
 IA --> AC
 AC --> IAT
 AC --> IJD
+AC --> JRD
 AC --> IPH
 AC --> IFH
 AC --> ITH
@@ -75,6 +100,9 @@ AC --> SPR
 AC --> IR
 AC --> CAP
 AC --> CB
+JRD --> IAT
+JRD --> IRT
+JRD --> JRM
 ```
 
 **Diagram sources**
@@ -91,22 +119,29 @@ AC --> CB
 - [ContentBlock.cs](file://Models/ContentBlock.cs)
 - [IAgentTransport.cs](file://Transport/IAgentTransport.cs)
 - [IJsonRpcDispatcher.cs](file://Protocol/IJsonRpcDispatcher.cs)
+- [JsonRpcDispatcher.cs](file://Protocol/JsonRpcDispatcher.cs)
+- [IRequestTracker.cs](file://Protocol/IRequestTracker.cs)
+- [RequestTracker.cs](file://Protocol/RequestTracker.cs)
+- [JsonRpcMessage.cs](file://JsonRpc/JsonRpcMessage.cs)
+- [JsonRpcRequest.cs](file://JsonRpc/JsonRpcRequest.cs)
+- [JsonRpcResponse.cs](file://JsonRpc/JsonRpcResponse.cs)
+- [JsonRpcNotification.cs](file://JsonRpc/JsonRpcNotification.cs)
 
 **Section sources**
 - [README.md](file://README.md)
 
 ## Core Components
 - IAcpClient: Defines the public contract for initializing, session management, prompting, cancellation, shutdown, and extensibility via custom handlers.
-- AcpClient: Default implementation that wires transport, dispatcher, and handlers; manages lifecycle and events.
+- AcpClient: Default implementation that wires transport, dispatcher, and handlers; manages lifecycle and events with enhanced bidirectional communication support.
 - Handler interfaces: IPermissionHandler, IFileSystemHandler, ITerminalHandler allow UI or application-specific implementations to respond to agent requests.
 
 Key responsibilities:
 - InitializeAsync: Start transport, connect dispatcher, register built-in handlers, perform handshake, and return agent info.
-- CreateSessionAsync/LoadSessionAsync: Manage sessions and update CurrentSessionId.
-- SendPromptAsync: Send a prompt and receive a response; streaming updates are delivered via SessionUpdated.
+- CreateSessionAsync/LoadSessionAsync: Manage sessions and update CurrentSessionId with improved error handling.
+- SendPromptAsync: Send a prompt and receive a response; streaming updates are delivered via SessionUpdated with enhanced notification support.
 - CancelSessionAsync: Send a cancel notification for an ongoing session operation.
 - ShutdownAsync/DisposeAsync: Gracefully disconnect and stop transport.
-- RegisterRequestHandler/RegisterNotificationHandler: Extend protocol behavior.
+- RegisterRequestHandler/RegisterNotificationHandler: Extend protocol behavior with custom handlers.
 
 **Section sources**
 - [IAcpClient.cs](file://Client/IAcpClient.cs)
@@ -116,44 +151,53 @@ Key responsibilities:
 - [ITerminalHandler.cs](file://Client/ITerminalHandler.cs)
 
 ## Architecture Overview
-The client follows a layered architecture:
-- Transport layer abstracts process communication (e.g., stdio).
-- Dispatcher handles JSON-RPC message routing, request/response correlation, and notifications.
-- Client orchestrates initialization, session lifecycle, prompts, and eventing.
+The client follows a layered architecture with enhanced bidirectional communication:
+- Transport layer abstracts process communication (e.g., stdio) with improved fault handling.
+- Dispatcher handles JSON-RPC message routing, request/response correlation, and notifications with concurrent processing.
+- Client orchestrates initialization, session lifecycle, prompts, and eventing with robust error handling.
 - Handlers implement domain-specific behaviors (permissions, file system, terminal).
+- Request tracker manages pending requests with proper cancellation support.
 
 ```mermaid
 sequenceDiagram
 participant App as "Application"
 participant Client as "AcpClient"
 participant Transport as "IAgentTransport"
-participant Dispatcher as "IJsonRpcDispatcher"
+participant Dispatcher as "JsonRpcDispatcher"
+participant Tracker as "RequestTracker"
 participant Agent as "Agent Process"
 App->>Client : InitializeAsync()
 Client->>Transport : StartAsync()
 Client->>Dispatcher : Connect(Transport)
+Dispatcher->>Transport : Subscribe MessageReceived
 Client->>Dispatcher : RegisterNotificationHandler("session/update")
 Client->>Dispatcher : RegisterRequestHandler("session/request_permission", ...)
 Client->>Dispatcher : RegisterRequestHandler("fs/*", ...)
 Client->>Dispatcher : RegisterRequestHandler("terminal/*", ...)
 Client->>Dispatcher : SendRequestAsync("initialize", payload)
+Dispatcher->>Tracker : CreatePendingRequest()
 Dispatcher-->>Agent : initialize request
 Agent-->>Dispatcher : initialize response
+Dispatcher->>Tracker : TryCompleteRequest()
 Dispatcher-->>Client : InitializeResponse
 Client-->>App : InitializeResponse
 App->>Client : CreateSessionAsync(cwd)
 Client->>Dispatcher : SendRequestAsync("session/new", {cwd})
+Dispatcher->>Tracker : CreatePendingRequest()
 Dispatcher-->>Agent : session/new
 Agent-->>Dispatcher : sessionId
+Dispatcher->>Tracker : TryCompleteRequest()
 Dispatcher-->>Client : sessionId
 Client-->>App : sessionId
 App->>Client : SendPromptAsync(sessionId, prompt)
 Client->>Dispatcher : SendRequestAsync("session/prompt", {sessionId, prompt})
+Dispatcher->>Tracker : CreatePendingRequest()
 Dispatcher-->>Agent : session/prompt
 Agent-->>Dispatcher : session/update (streaming)
 Dispatcher-->>Client : SessionUpdate (via registered handler)
 Client-->>App : SessionUpdated event (multiple times)
 Agent-->>Dispatcher : session/prompt response
+Dispatcher->>Tracker : TryCompleteRequest()
 Dispatcher-->>Client : SessionPromptResponse
 Client-->>App : SessionPromptResponse
 ```
@@ -162,6 +206,9 @@ Client-->>App : SessionPromptResponse
 - [AcpClient.cs](file://Client/AcpClient.cs)
 - [IAgentTransport.cs](file://Transport/IAgentTransport.cs)
 - [IJsonRpcDispatcher.cs](file://Protocol/IJsonRpcDispatcher.cs)
+- [JsonRpcDispatcher.cs](file://Protocol/JsonRpcDispatcher.cs)
+- [IRequestTracker.cs](file://Protocol/IRequestTracker.cs)
+- [RequestTracker.cs](file://Protocol/RequestTracker.cs)
 - [SessionUpdate.cs](file://Models/SessionUpdate.cs)
 - [SessionUpdateWrapper.cs](file://Models/SessionUpdateWrapper.cs)
 - [SessionPromptRequest.cs](file://Models/SessionPromptRequest.cs)
@@ -181,7 +228,7 @@ Client-->>App : SessionPromptResponse
   - InitializeAsync(CancellationToken): Starts transport, connects dispatcher, registers handlers, performs handshake, returns InitializeResponse.
   - CreateSessionAsync(string cwd, CancellationToken): Creates a new session and sets CurrentSessionId.
   - LoadSessionAsync(string sessionId, string cwd, CancellationToken): Loads an existing session and sets CurrentSessionId.
-  - SendPromptAsync(string sessionId, List<ContentBlock> prompt, CancellationToken): Sends a prompt and returns SessionPromptResponse; streaming updates arrive via SessionUpdated.
+  - SendPromptAsync(string sessionId, List<ContentBlock> prompt, CancellationToken): Sends a prompt and returns SessionPromptResponse; streaming updates are delivered via SessionUpdated.
   - CancelSessionAsync(string sessionId, CancellationToken): Cancels an in-progress prompt by sending a session/cancel notification.
   - ShutdownAsync(): Disconnects dispatcher and stops transport.
   - RegisterRequestHandler(string method, Func<JsonRpcRequest, Task<JsonRpcResponse>>): Registers custom request handlers.
@@ -313,10 +360,46 @@ Usage scenarios:
 - [Capabilities.cs](file://Models/Capabilities.cs)
 - [ContentBlock.cs](file://Models/ContentBlock.cs)
 
+### Enhanced JSON-RPC Infrastructure
+The JSON-RPC infrastructure has been significantly enhanced to support bidirectional communication patterns:
+
+- JsonRpcDispatcher:
+  - Manages concurrent request/response correlation using IRequestTracker.
+  - Handles both requests and notifications with separate handler registries.
+  - Provides robust message deserialization and error handling.
+  - Supports connection lifecycle management with proper cleanup.
+
+- RequestTracker:
+  - Uses ConcurrentDictionary for thread-safe pending request management.
+  - Implements proper cancellation propagation through TaskCompletionSource.
+  - Provides automatic cleanup of pending requests during disconnection.
+
+- Message Types:
+  - JsonRpcMessage: Base type with jsonrpc version field.
+  - JsonRpcRequest: Request messages with id, method, and optional params.
+  - JsonRpcResponse: Response messages with id, result or error.
+  - JsonRpcNotification: Notification messages with method and optional params.
+
+Bidirectional Communication Pattern:
+- Client sends requests and receives responses through the dispatcher.
+- Agent can send notifications (one-way messages) without waiting for responses.
+- Both directions support cancellation tokens for cooperative cancellation.
+- Error handling is consistent across all message types.
+
+**Section sources**
+- [JsonRpcDispatcher.cs](file://Protocol/JsonRpcDispatcher.cs)
+- [IRequestTracker.cs](file://Protocol/IRequestTracker.cs)
+- [RequestTracker.cs](file://Protocol/RequestTracker.cs)
+- [JsonRpcMessage.cs](file://JsonRpc/JsonRpcMessage.cs)
+- [JsonRpcRequest.cs](file://JsonRpc/JsonRpcRequest.cs)
+- [JsonRpcResponse.cs](file://JsonRpc/JsonRpcResponse.cs)
+- [JsonRpcNotification.cs](file://JsonRpc/JsonRpcNotification.cs)
+
 ### Async/Await Patterns and Cancellation
 - All public methods are async and accept CancellationToken to support cooperative cancellation.
 - Use await consistently to avoid deadlocks and ensure proper exception propagation.
 - For long-running operations (e.g., waiting for terminal exit), pass the same cancellation token to allow timely termination.
+- Request tracking ensures proper cancellation of pending requests during disconnection.
 
 **Section sources**
 - [IAcpClient.cs](file://Client/IAcpClient.cs)
@@ -328,8 +411,7 @@ Usage scenarios:
 - Event handlers can be invoked concurrently; ensure they are thread-safe or use synchronization primitives.
 - Avoid synchronous blocking within event handlers; prefer asynchronous processing.
 - Shared mutable state accessed from multiple handlers should be protected (e.g., using locks or concurrent collections).
-
-[No sources needed since this section provides general guidance]
+- The dispatcher uses concurrent collections for thread-safe handler registration and message processing.
 
 ## Dependency Analysis
 The client depends on transport and protocol abstractions, and models define data contracts. Handlers are optional but recommended for full functionality.
@@ -395,9 +477,35 @@ class IJsonRpcDispatcher {
 +RegisterNotificationHandler(method, handler)
 +DisconnectAsync()
 }
+class JsonRpcDispatcher {
+-_requestTracker : IRequestTracker
+-_requestHandlers : ConcurrentDictionary
+-_notificationHandlers : ConcurrentDictionary
+-_transport : IAgentTransport
++Connect(transport)
++SendRequestAsync(method, params, ct)
++SendNotificationAsync(method, params, ct)
++RegisterRequestHandler(method, handler)
++RegisterNotificationHandler(method, handler)
++DisconnectAsync()
+}
+class IRequestTracker {
++CreatePendingRequest()
++TryCompleteRequest(id, response)
++CancelAll()
+}
+class RequestTracker {
+-_pending : ConcurrentDictionary
+-_nextId : long
++CreatePendingRequest()
++TryCompleteRequest(id, response)
++CancelAll()
+}
 IAcpClient <|.. AcpClient
 AcpClient --> IAgentTransport : "uses"
 AcpClient --> IJsonRpcDispatcher : "uses"
+JsonRpcDispatcher --> IAgentTransport : "uses"
+JsonRpcDispatcher --> IRequestTracker : "uses"
 ```
 
 **Diagram sources**
@@ -405,6 +513,9 @@ AcpClient --> IJsonRpcDispatcher : "uses"
 - [AcpClient.cs](file://Client/AcpClient.cs)
 - [IAgentTransport.cs](file://Transport/IAgentTransport.cs)
 - [IJsonRpcDispatcher.cs](file://Protocol/IJsonRpcDispatcher.cs)
+- [JsonRpcDispatcher.cs](file://Protocol/JsonRpcDispatcher.cs)
+- [IRequestTracker.cs](file://Protocol/IRequestTracker.cs)
+- [RequestTracker.cs](file://Protocol/RequestTracker.cs)
 
 **Section sources**
 - [IAcpClient.cs](file://Client/IAcpClient.cs)
@@ -417,8 +528,8 @@ AcpClient --> IJsonRpcDispatcher : "uses"
 - Minimize allocations in event handlers; reuse buffers where possible.
 - Configure ILogger appropriately to avoid excessive logging overhead in production.
 - Ensure handlers perform non-blocking work; offload heavy tasks to background threads or async pipelines.
-
-[No sources needed since this section provides general guidance]
+- The concurrent dictionary usage in RequestTracker provides efficient thread-safe operations for high-throughput scenarios.
+- TaskCreationOptions.RunContinuationsAsynchronously prevents potential deadlocks in continuation execution.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -428,17 +539,20 @@ Common issues and resolutions:
 - Transport faults:
   - Monitor TransportFaulted to detect connection issues; implement retry or reconnection logic as needed.
 - Protocol version mismatch:
-  - InitializeAsync logs a warning if the agent’s protocol version differs from the client’s expected version; verify compatibility.
+  - InitializeAsync logs a warning if the agent's protocol version differs from the client's expected version; verify compatibility.
 - Long-running operations:
   - Use CancellationToken to cancel operations promptly; ensure handlers respect cancellation tokens.
 - Event handler concurrency:
   - Make SessionUpdated and AgentProcessExited handlers thread-safe; avoid synchronous blocking.
+- Request tracking issues:
+  - Pending requests are automatically cancelled during disconnection; ensure proper cleanup in your application.
+- JSON deserialization errors:
+  - Unknown SessionUpdate types fall back to base type to avoid errors when Agent sends new types.
 
 **Section sources**
 - [AcpClient.cs](file://Client/AcpClient.cs)
 - [IAgentTransport.cs](file://Transport/IAgentTransport.cs)
+- [SessionUpdate.cs](file://Models/SessionUpdate.cs)
 
 ## Conclusion
-The IAcpClient interface and AcpClient implementation provide a robust, extensible foundation for interacting with ACP-compliant agents. By leveraging async/await, cancellation tokens, and the event-driven model, applications can build responsive and resilient integrations. Proper configuration of handlers, careful error handling, and attention to thread safety ensure reliable operation across diverse environments.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The IAcpClient interface and AcpClient implementation provide a robust, extensible foundation for interacting with ACP-compliant agents. The enhanced bidirectional communication pattern with improved JSON-RPC infrastructure enables more reliable and responsive integrations. By leveraging async/await, cancellation tokens, and the event-driven model, applications can build resilient systems that handle both client-to-agent and agent-to-client communication effectively. Proper configuration of handlers, careful error handling, and attention to thread safety ensure reliable operation across diverse environments. The enhanced request tracking and concurrent processing capabilities make the system suitable for high-throughput scenarios while maintaining responsiveness and reliability.

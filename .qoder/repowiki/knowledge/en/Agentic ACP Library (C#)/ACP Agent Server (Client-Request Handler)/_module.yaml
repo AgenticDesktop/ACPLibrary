@@ -1,0 +1,14 @@
+schema_version: 1
+module_path: agent
+title: ACP Agent Server (Client-Request Handler)
+scope:
+    - Agent/AcpAgent.cs
+    - Agent/AcpAgentHandlerBase.cs
+    - Agent/IAcpAgent.cs
+    - Agent/IAcpAgentContext.cs
+    - Agent/IAcpAgentHandler.cs
+source_files: []
+depends_on: []
+related_to:
+    - path: client
+    - path: protocol

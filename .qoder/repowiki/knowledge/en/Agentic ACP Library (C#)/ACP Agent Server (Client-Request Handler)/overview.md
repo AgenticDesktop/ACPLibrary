@@ -1,0 +1,1 @@
+Server-side ACP agent that listens for JSON-RPC requests from a Client process, dispatches them to a user-provided handler, and exposes an IAcpAgentContext for agents to call back into the Client.

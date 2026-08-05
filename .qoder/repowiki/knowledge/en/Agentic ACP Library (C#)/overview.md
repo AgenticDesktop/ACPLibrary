@@ -1,0 +1,1 @@
+Single NuGet package implementing the Agent Client Protocol over JSON-RPC 2.0, composing models, serialization, protocol dispatch, client/agent sides, and DI registration into one library.

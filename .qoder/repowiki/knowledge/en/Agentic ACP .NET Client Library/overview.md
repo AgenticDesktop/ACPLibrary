@@ -1,1 +1,0 @@
-.NET NuGet package implementing the Agent Client Protocol over JSON-RPC 2.0, wiring a stdio transport, a protocol dispatcher, and pluggable permission/filesystem/terminal handlers into a single AcpClient.

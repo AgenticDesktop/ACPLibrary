@@ -6,6 +6,6 @@ scope:
 source_files: []
 depends_on: []
 related_to:
+    - path: agent
     - path: json_rpc
-    - path: models
     - path: protocol

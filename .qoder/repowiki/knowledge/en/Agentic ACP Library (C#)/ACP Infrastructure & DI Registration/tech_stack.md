@@ -1,0 +1,1 @@
+System.Text.Json for serialization with custom `JsonRpcMessageConverter`; Microsoft.Extensions.DependencyInjection for service registration; generic constraints enforce handler types at compile time.

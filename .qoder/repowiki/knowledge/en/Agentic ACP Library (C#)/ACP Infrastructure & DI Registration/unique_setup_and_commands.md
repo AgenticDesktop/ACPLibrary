@@ -1,0 +1,1 @@
+Call `services.AddAcpClient()` or `services.AddAcpAgent<MyHandler>()` during application startup — a process must choose exactly one of the two registrations, never both.

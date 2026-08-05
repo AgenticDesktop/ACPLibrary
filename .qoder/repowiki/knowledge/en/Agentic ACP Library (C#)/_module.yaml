@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: ""
-title: Agentic ACP .NET Client Library
+title: Agentic ACP Library (C#)
 scope:
     - README.md
     - .gitignore

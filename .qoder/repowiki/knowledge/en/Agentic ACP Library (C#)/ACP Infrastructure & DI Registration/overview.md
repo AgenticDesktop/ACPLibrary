@@ -1,0 +1,1 @@
+Provides shared JSON serialization defaults for ACP messages and Microsoft.Extensions.DependencyInjection extension methods to register the ACP client or agent service lifetimes into the DI container.

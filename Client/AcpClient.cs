@@ -166,16 +166,18 @@ public class AcpClient : IAcpClient
         };
 
         var response = await _dispatcher.SendRequestAsync("initialize", initRequest, ct);
+        EnsureNoError(response);
         AgentInfo = JsonSerializer.Deserialize<InitializeResponse>(
             response.Result!.Value.GetRawText(),
             JsonOptions.Default);
 
         _logger.LogInformation("ACP client initialized. Agent: {AgentName}", AgentInfo?.AgentInfo?.Name);
 
-        // Check protocol version
-        if (AgentInfo?.ProtocolVersion is not null && AgentInfo.ProtocolVersion != 1)
+        // Check protocol version — fail explicitly on incompatibility
+        const int supportedVersion = 1;
+        if (AgentInfo is not null && AgentInfo.ProtocolVersion != supportedVersion)
         {
-            _logger.LogWarning("Protocol version mismatch: client=1, agent={AgentVersion}", AgentInfo.ProtocolVersion);
+            throw new AcpProtocolVersionException(supportedVersion, AgentInfo.ProtocolVersion);
         }
 
         return AgentInfo!;
@@ -187,6 +189,7 @@ public class AcpClient : IAcpClient
         _logger.LogInformation("Creating new session in {Cwd}", cwd);
         var request = new SessionNewRequest { Cwd = cwd };
         var response = await _dispatcher.SendRequestAsync("session/new", request, ct);
+        EnsureNoError(response);
         var result = JsonSerializer.Deserialize<SessionNewResponse>(
             response.Result!.Value.GetRawText(), JsonOptions.Default);
         CurrentSessionId = result!.SessionId;
@@ -199,7 +202,8 @@ public class AcpClient : IAcpClient
     {
         _logger.LogInformation("Loading session {SessionId} in {Cwd}", sessionId, cwd);
         var request = new { sessionId, cwd, mcpServers = Array.Empty<object>() };
-        await _dispatcher.SendRequestAsync("session/load", request, ct);
+        var response = await _dispatcher.SendRequestAsync("session/load", request, ct);
+        EnsureNoError(response);
         CurrentSessionId = sessionId;
         return CurrentSessionId;
     }
@@ -211,6 +215,7 @@ public class AcpClient : IAcpClient
         _logger.LogDebug("Sending prompt to session {SessionId}", sessionId);
         var request = new SessionPromptRequest { SessionId = sessionId, Prompt = prompt };
         var response = await _dispatcher.SendRequestAsync("session/prompt", request, ct);
+        EnsureNoError(response);
         return JsonSerializer.Deserialize<SessionPromptResponse>(
             response.Result!.Value.GetRawText(), JsonOptions.Default)!;
     }
@@ -246,6 +251,15 @@ public class AcpClient : IAcpClient
     /// <inheritdoc />
     public void RegisterNotificationHandler(string method, Func<JsonRpcNotification, Task> handler)
         => _dispatcher.RegisterNotificationHandler(method, handler);
+
+    /// <summary>Throws <see cref="AcpRpcException"/> if the response contains a JSON-RPC error.</summary>
+    private static void EnsureNoError(JsonRpcResponse response)
+    {
+        if (response.Error is not null)
+        {
+            throw new AcpRpcException(response.Error.Code, response.Error.Message);
+        }
+    }
 
     private void RegisterTerminalHandlers()
     {

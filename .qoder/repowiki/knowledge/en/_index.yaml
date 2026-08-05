@@ -3,11 +3,11 @@ schema_version: 1
 locale: en-US
 branch: main
 nodes_managed: true
-exported_at: "2026-07-31T05:40:15Z"
+exported_at: "2026-08-01T03:45:13Z"
 modules:
     "":
-        dir_name: Agentic ACP .NET Client Library
-        title: Agentic ACP .NET Client Library
+        dir_name: Agentic ACP Library (C#)
+        title: Agentic ACP Library (C#)
         scope:
             - README.md
             - .gitignore
@@ -15,12 +15,29 @@ modules:
             - LICENSE
         source_files: []
         children:
+            - agent
             - client
+            - infrastructure
             - json_rpc
             - models
             - protocol
         depends_on: []
         related_to: []
+    agent:
+        dir_name: ACP Agent Server (Client-Request Handler)
+        title: ACP Agent Server (Client-Request Handler)
+        scope:
+            - Agent/AcpAgent.cs
+            - Agent/AcpAgentHandlerBase.cs
+            - Agent/IAcpAgent.cs
+            - Agent/IAcpAgentContext.cs
+            - Agent/IAcpAgentHandler.cs
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: client
+            - path: protocol
     client:
         dir_name: ACP Protocol Client
         title: ACP Protocol Client
@@ -30,9 +47,19 @@ modules:
         children: []
         depends_on: []
         related_to:
+            - path: agent
             - path: json_rpc
-            - path: models
             - path: protocol
+    infrastructure:
+        dir_name: ACP Infrastructure & DI Registration
+        title: ACP Infrastructure & DI Registration
+        scope:
+            - Infrastructure/JsonOptions.cs
+            - Infrastructure/ServiceCollectionExtensions.cs
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
     json_rpc:
         dir_name: JSON-RPC 2.0 Message Model & Serializer
         title: JSON-RPC 2.0 Message Model & Serializer
@@ -43,7 +70,7 @@ modules:
         depends_on: []
         related_to:
             - path: client
-            - path: protocol
+            - path: models
     models:
         dir_name: ACP Protocol Data Models
         title: ACP Protocol Data Models
@@ -53,8 +80,7 @@ modules:
         children: []
         depends_on: []
         related_to:
-            - path: client
-            - path: protocol
+            - path: json_rpc
     protocol:
         dir_name: JSON-RPC Protocol Dispatcher & Request Tracker
         title: JSON-RPC Protocol Dispatcher & Request Tracker
@@ -64,6 +90,5 @@ modules:
         children: []
         depends_on: []
         related_to:
+            - path: agent
             - path: client
-            - path: json_rpc
-            - path: models

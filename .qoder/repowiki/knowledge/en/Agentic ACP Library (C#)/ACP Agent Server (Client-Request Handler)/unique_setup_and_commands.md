@@ -1,0 +1,1 @@
+No build or test scripts are present in this scope; the agent is consumed by constructing `AcpAgent` with a concrete transport, JSON-RPC dispatcher, and handler implementation, then calling `RunAsync`.

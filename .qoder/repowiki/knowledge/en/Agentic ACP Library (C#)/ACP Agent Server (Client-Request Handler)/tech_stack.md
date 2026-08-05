@@ -1,0 +1,1 @@
+C# async/await with `System.Text.Json` for serialization, `Microsoft.Extensions.Logging` (with `NullLogger` fallback), and `System.Collections.Concurrent` for thread-safe session tracking. Depends on cross-cutting abstractions `IAgentTransport`, `IJsonRpcDispatcher`, and model types from `Agentic.ACPLibrary.Models` and `Agentic.ACPLibrary.Protocol`.

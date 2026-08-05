@@ -3,19 +3,23 @@ using System.Text.Json;
 using Agentic.ACPLibrary.Infrastructure;
 using Agentic.ACPLibrary.JsonRpc;
 using Agentic.ACPLibrary.Transport;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Agentic.ACPLibrary.Protocol;
 
 public class JsonRpcDispatcher : IJsonRpcDispatcher
 {
     private readonly IRequestTracker _requestTracker;
+    private readonly ILogger<JsonRpcDispatcher> _logger;
     private readonly ConcurrentDictionary<string, Func<JsonRpcRequest, Task<JsonRpcResponse>>> _requestHandlers = new();
     private readonly ConcurrentDictionary<string, Func<JsonRpcNotification, Task>> _notificationHandlers = new();
     private IAgentTransport? _transport;
 
-    public JsonRpcDispatcher(IRequestTracker? requestTracker = null)
+    public JsonRpcDispatcher(IRequestTracker? requestTracker = null, ILogger<JsonRpcDispatcher>? logger = null)
     {
         _requestTracker = requestTracker ?? new RequestTracker();
+        _logger = logger ?? NullLogger<JsonRpcDispatcher>.Instance;
     }
 
     public void Connect(IAgentTransport transport)
@@ -96,15 +100,7 @@ public class JsonRpcDispatcher : IJsonRpcDispatcher
                     break;
 
                 case JsonRpcRequest request:
-                    if (_requestHandlers.TryGetValue(request.Method, out var reqHandler))
-                    {
-                        var resp = await reqHandler(request);
-                        if (_transport is not null)
-                        {
-                            var respJson = JsonSerializer.Serialize(resp, JsonOptions.Default);
-                            await _transport.SendAsync(respJson);
-                        }
-                    }
+                    await HandleRequestAsync(request);
                     break;
 
                 case JsonRpcNotification notification:
@@ -115,9 +111,48 @@ public class JsonRpcDispatcher : IJsonRpcDispatcher
                     break;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Deserialization failure or handler exception, ignored for now
+            _logger.LogError(ex, "Failed to process incoming JSON-RPC message.");
         }
+    }
+
+    private async Task HandleRequestAsync(JsonRpcRequest request)
+    {
+        if (_transport is null)
+            return;
+
+        if (!_requestHandlers.TryGetValue(request.Method, out var handler))
+        {
+            _logger.LogWarning("No handler registered for method '{Method}'.", request.Method);
+            await SendErrorResponseAsync(request.Id, -32601, "Method not found");
+            return;
+        }
+
+        try
+        {
+            var resp = await handler(request);
+            var respJson = JsonSerializer.Serialize(resp, JsonOptions.Default);
+            await _transport.SendAsync(respJson);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Handler for method '{Method}' threw an exception.", request.Method);
+            await SendErrorResponseAsync(request.Id, -32603, "Internal error");
+        }
+    }
+
+    private async Task SendErrorResponseAsync(long id, int code, string message)
+    {
+        if (_transport is null)
+            return;
+
+        var errorResponse = new JsonRpcResponse
+        {
+            Id = id,
+            Error = new JsonRpcError { Code = code, Message = message }
+        };
+        var json = JsonSerializer.Serialize(errorResponse, JsonOptions.Default);
+        await _transport.SendAsync(json);
     }
 }
