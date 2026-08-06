@@ -1,0 +1,1 @@
+xUnit test suite verifying AcpClient error handling (protocol version mismatches and JSON-RPC error codes) and JsonRpcDispatcher request routing, handler invocation, and error responses against the Agentic.ACPLibrary.

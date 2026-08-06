@@ -3,11 +3,11 @@ schema_version: 1
 locale: en-US
 branch: main
 nodes_managed: true
-exported_at: "2026-08-01T03:45:13Z"
+exported_at: "2026-08-06T09:17:48Z"
 modules:
     "":
-        dir_name: Agentic ACP Library (C#)
-        title: Agentic ACP Library (C#)
+        dir_name: Agentic ACP Library (Single NuGet Package)
+        title: Agentic ACP Library (Single NuGet Package)
         scope:
             - README.md
             - .gitignore
@@ -21,6 +21,7 @@ modules:
             - json_rpc
             - models
             - protocol
+            - tests
         depends_on: []
         related_to: []
     agent:
@@ -37,7 +38,7 @@ modules:
         depends_on: []
         related_to:
             - path: client
-            - path: protocol
+            - path: infrastructure
     client:
         dir_name: ACP Protocol Client
         title: ACP Protocol Client
@@ -48,8 +49,8 @@ modules:
         depends_on: []
         related_to:
             - path: agent
-            - path: json_rpc
-            - path: protocol
+            - path: infrastructure
+            - path: tests
     infrastructure:
         dir_name: ACP Infrastructure & DI Registration
         title: ACP Infrastructure & DI Registration
@@ -59,7 +60,9 @@ modules:
         source_files: []
         children: []
         depends_on: []
-        related_to: []
+        related_to:
+            - path: agent
+            - path: client
     json_rpc:
         dir_name: JSON-RPC 2.0 Message Model & Serializer
         title: JSON-RPC 2.0 Message Model & Serializer
@@ -69,8 +72,7 @@ modules:
         children: []
         depends_on: []
         related_to:
-            - path: client
-            - path: models
+            - path: protocol
     models:
         dir_name: ACP Protocol Data Models
         title: ACP Protocol Data Models
@@ -79,8 +81,7 @@ modules:
         source_files: []
         children: []
         depends_on: []
-        related_to:
-            - path: json_rpc
+        related_to: []
     protocol:
         dir_name: JSON-RPC Protocol Dispatcher & Request Tracker
         title: JSON-RPC Protocol Dispatcher & Request Tracker
@@ -90,5 +91,18 @@ modules:
         children: []
         depends_on: []
         related_to:
-            - path: agent
+            - path: json_rpc
+            - path: tests
+    tests:
+        dir_name: AcpClient & JsonRpc Dispatcher Unit Tests
+        title: AcpClient & JsonRpc Dispatcher Unit Tests
+        scope:
+            - tests/Agentic.ACPLibrary.Tests/AcpClientErrorHandlingTests.cs
+            - tests/Agentic.ACPLibrary.Tests/Agentic.ACPLibrary.Tests.csproj
+            - tests/Agentic.ACPLibrary.Tests/JsonRpcDispatcherTests.cs
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
             - path: client
+            - path: protocol

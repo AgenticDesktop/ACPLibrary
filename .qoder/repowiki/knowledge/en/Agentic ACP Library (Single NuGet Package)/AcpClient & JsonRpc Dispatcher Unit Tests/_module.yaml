@@ -1,0 +1,12 @@
+schema_version: 1
+module_path: tests
+title: AcpClient & JsonRpc Dispatcher Unit Tests
+scope:
+    - tests/Agentic.ACPLibrary.Tests/AcpClientErrorHandlingTests.cs
+    - tests/Agentic.ACPLibrary.Tests/Agentic.ACPLibrary.Tests.csproj
+    - tests/Agentic.ACPLibrary.Tests/JsonRpcDispatcherTests.cs
+source_files: []
+depends_on: []
+related_to:
+    - path: client
+    - path: protocol

@@ -5,5 +5,4 @@ scope:
     - Models/
 source_files: []
 depends_on: []
-related_to:
-    - path: json_rpc
+related_to: []

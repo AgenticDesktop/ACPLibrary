@@ -1,0 +1,1 @@
+Packable .NET library that implements the Agentic Agent Client Protocol over JSON-RPC 2.0, composing protocol models, serialization, client/agent sides, and DI registration into one ShihaoShen.Agentic.ACPLibrary NuGet package.

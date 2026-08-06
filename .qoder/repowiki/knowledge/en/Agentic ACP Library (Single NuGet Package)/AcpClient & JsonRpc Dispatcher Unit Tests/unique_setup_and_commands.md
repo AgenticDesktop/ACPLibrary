@@ -1,0 +1,1 @@
+Run with `dotnet test` from the repository root; the project is not packable (`IsPackable=false`) and relies on the implicit global usings for Xunit.

@@ -1,0 +1,4 @@
+- Test doubles implement the production interfaces (`IAgentTransport`, `IJsonRpcDispatcher`) directly rather than using a mocking framework, keeping them as minimal internal sealed classes inside the test file.
+- Each `[Fact]` follows an Arrange-Act-Assert pattern where Arrange builds a fake transport/dispatcher pair, Act invokes the method under test, and Assert checks either thrown exceptions (`Assert.ThrowsAsync`) or serialized response fields on captured messages.
+- Assertions verify both the exception properties (`ErrorCode`, `ErrorMessage`) and that the exception message contains the relevant code and text, ensuring end-to-end error propagation is tested.
+- JSON-RPC requests are embedded as raw string literals using triple-quoted verbatim strings so the exact wire format can be asserted on deserialization.

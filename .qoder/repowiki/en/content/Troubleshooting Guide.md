@@ -15,7 +15,17 @@
 - [JsonOptions.cs](file://Infrastructure/JsonOptions.cs)
 - [RequestPermissionRequest.cs](file://Models/RequestPermissionRequest.cs)
 - [SessionUpdate.cs](file://Models/SessionUpdate.cs)
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)
+- [AcpClientErrorHandlingTests.cs](file://tests/Agentic.ACPLibrary.Tests/AcpClientErrorHandlingTests.cs)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Added comprehensive documentation for new exception types: AcpRpcException and AcpProtocolVersionException
+- Updated common error messages section with specific guidance for RPC errors and protocol version mismatches
+- Enhanced debugging strategies for exception handling and error diagnosis
+- Added new troubleshooting scenarios for protocol compatibility issues
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -30,7 +40,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This guide provides systematic troubleshooting for the ACP client library, focusing on agent connection problems, transport layer issues, JSON-RPC message parsing errors, permission handler failures, file system access problems, terminal execution issues, performance bottlenecks, memory leaks, resource exhaustion, logging strategies, diagnostic tools, profiling techniques, common error messages and resolutions, platform-specific issues, environment configuration problems, and compatibility across .NET runtime versions.
+This guide provides systematic troubleshooting for the ACP client library, focusing on agent connection problems, transport layer issues, JSON-RPC message parsing errors, permission handler failures, file system access problems, terminal execution issues, performance bottlenecks, memory leaks, resource exhaustion, logging strategies, diagnostic tools, profiling techniques, common error messages and resolutions, platform-specific issues, environment configuration problems, and compatibility across .NET runtime versions. **Updated** to include comprehensive coverage of the new exception types for enhanced error handling and debugging capabilities.
 
 ## Project Structure
 The library is organized into clear layers:
@@ -49,6 +59,8 @@ I1["IAcpClient"]
 H1["IPermissionHandler"]
 H2["IFileSystemHandler"]
 H3["ITerminalHandler"]
+E1["AcpRpcException"]
+E2["AcpProtocolVersionException"]
 end
 subgraph "Transport"
 T1["StdioAgentTransport"]
@@ -69,6 +81,8 @@ A --> D1
 A --> H1
 A --> H2
 A --> H3
+A --> E1
+A --> E2
 D1 --> T1
 D1 --> C1
 A --> O1
@@ -88,6 +102,8 @@ A --> M2
 - [JsonOptions.cs](file://Infrastructure/JsonOptions.cs)
 - [RequestPermissionRequest.cs](file://Models/RequestPermissionRequest.cs)
 - [SessionUpdate.cs](file://Models/SessionUpdate.cs)
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)
 
 **Section sources**
 - [README.md](file://README.md)
@@ -100,6 +116,7 @@ A --> M2
 - JsonRpcMessageConverter: discriminates between request/notification/response based on JSON fields and avoids recursion by stripping itself from inner options.
 - JsonOptions: centralizes System.Text.Json settings (case-insensitive properties, ignore nulls, out-of-order metadata, converters).
 - Handler interfaces: define contracts for permission, file system, and terminal operations invoked by the agent.
+- **New Exception Types**: AcpRpcException for JSON-RPC error responses and AcpProtocolVersionException for protocol version incompatibilities.
 
 Key responsibilities and failure points are mapped throughout this guide.
 
@@ -112,6 +129,8 @@ Key responsibilities and failure points are mapped throughout this guide.
 - [IPermissionHandler.cs](file://Client/IPermissionHandler.cs)
 - [IFileSystemHandler.cs](file://Client/IFileSystemHandler.cs)
 - [ITerminalHandler.cs](file://Client/ITerminalHandler.cs)
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)
 
 ## Architecture Overview
 The runtime flow connects the client to an external agent via a child process over stdio. The dispatcher handles JSON-RPC routing, while handlers implement domain-specific behaviors.
@@ -135,14 +154,22 @@ Dispatcher-->>Transport : SendAsync(jsonLine)
 Transport-->>Agent : Write line to stdin
 Agent-->>Transport : Write response line to stdout
 Transport-->>Dispatcher : MessageReceived(line)
+alt Protocol Version Mismatch
+Dispatcher-->>Client : AcpProtocolVersionException
+else JSON-RPC Error
+Dispatcher-->>Client : AcpRpcException
+else Success
 Dispatcher-->>Client : Complete pending request
-Client-->>App : InitializeResponse
+end
+Client-->>App : InitializeResponse or Exception
 ```
 
 **Diagram sources**
 - [AcpClient.cs](file://Client/AcpClient.cs)
 - [JsonRpcDispatcher.cs](file://Protocol/JsonRpcDispatcher.cs)
 - [StdioAgentTransport.cs](file://Transport/StdioAgentTransport.cs)
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)
 
 ## Detailed Component Analysis
 
@@ -152,20 +179,25 @@ Responsibilities:
 - Registers built-in handlers for permissions, file system, and terminal methods.
 - Performs initialize handshake and stores agent info.
 - Manages sessions and prompts.
+- **Enhanced Error Handling**: Throws specific exceptions for RPC errors and protocol version mismatches.
 
 Common issues:
 - Missing handlers cause default responses or errors.
 - Session ID not set if CreateSessionAsync fails.
 - Event subscriptions must be attached before InitializeAsync.
+- **New**: Protocol version mismatches throw AcpProtocolVersionException during initialization.
 
 Diagnostics:
 - Inspect IsInitialized and AgentInfo after InitializeAsync.
 - Subscribe to AgentProcessExited to detect unexpected termination.
 - Use ILogger to trace initialization steps.
+- **Updated**: Catch and log AcpRpcException and AcpProtocolVersionException with detailed error information.
 
 **Section sources**
 - [AcpClient.cs](file://Client/AcpClient.cs)
 - [IAcpClient.cs](file://Client/IAcpClient.cs)
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)
 
 ### StdioAgentTransport
 Responsibilities:
@@ -255,12 +287,55 @@ Diagnostics:
 - [IFileSystemHandler.cs](file://Client/IFileSystemHandler.cs)
 - [ITerminalHandler.cs](file://Client/ITerminalHandler.cs)
 
+### New Exception Types
+
+#### AcpRpcException
+Purpose: Thrown when the Agent returns a JSON-RPC error response, carrying the protocol error code and message.
+
+Usage Scenarios:
+- InitializeAsync receives an error response from the agent
+- CreateSessionAsync encounters a JSON-RPC error
+- LoadSessionAsync fails with an error response
+- SendPromptAsync receives an error from the agent
+
+Properties:
+- ErrorCode: The JSON-RPC error code returned by the agent
+- ErrorMessage: The descriptive error message from the agent
+
+Resolution Steps:
+- Check the ErrorCode against standard JSON-RPC error codes
+- Log the ErrorMessage for debugging purposes
+- Implement retry logic for transient errors
+- Handle specific error codes appropriately
+
+#### AcpProtocolVersionException
+Purpose: Thrown when the Agent's protocol version is incompatible with the client.
+
+Usage Scenarios:
+- InitializeAsync detects protocol version mismatch during handshake
+- Client supports version 1 but agent requires a different version
+
+Properties:
+- ClientVersion: Protocol version supported by the client
+- AgentVersion: Protocol version reported by the agent
+
+Resolution Steps:
+- Upgrade the client to match the agent's required version
+- Use a compatible agent version that matches the client
+- Log version information for compatibility matrix maintenance
+
+**Section sources**
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)
+- [AcpClient.cs](file://Client/AcpClient.cs)
+
 ## Dependency Analysis
 High-level dependencies and coupling:
 - AcpClient depends on Transport, Dispatcher, and Handlers.
 - Dispatcher depends on Transport and RequestTracker.
 - JsonOptions centralizes serialization behavior used by both Dispatcher and AcpClient.
 - Models are consumed by AcpClient and handlers.
+- **New**: Exception types are thrown by AcpClient for error scenarios.
 
 ```mermaid
 classDiagram
@@ -293,11 +368,21 @@ class JsonOptions
 class IPermissionHandler
 class IFileSystemHandler
 class ITerminalHandler
+class AcpRpcException {
++ErrorCode : int
++ErrorMessage : string
+}
+class AcpProtocolVersionException {
++ClientVersion : int
++AgentVersion : int
+}
 AcpClient --> StdioAgentTransport : "uses"
 AcpClient --> JsonRpcDispatcher : "uses"
 AcpClient --> IPermissionHandler : "delegates"
 AcpClient --> IFileSystemHandler : "delegates"
 AcpClient --> ITerminalHandler : "delegates"
+AcpClient --> AcpRpcException : "throws"
+AcpClient --> AcpProtocolVersionException : "throws"
 JsonRpcDispatcher --> StdioAgentTransport : "sends/receives"
 AcpClient --> JsonOptions : "serializes"
 JsonRpcDispatcher --> JsonRpcMessageConverter : "deserializes"
@@ -312,6 +397,8 @@ JsonRpcDispatcher --> JsonRpcMessageConverter : "deserializes"
 - [IPermissionHandler.cs](file://Client/IPermissionHandler.cs)
 - [IFileSystemHandler.cs](file://Client/IFileSystemHandler.cs)
 - [ITerminalHandler.cs](file://Client/ITerminalHandler.cs)
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)
 
 **Section sources**
 - [AcpClient.cs](file://Client/AcpClient.cs)
@@ -324,8 +411,7 @@ JsonRpcDispatcher --> JsonRpcMessageConverter : "deserializes"
 - Stream throughput: Large outputs from terminals or file reads should be chunked and backpressure-aware.
 - Memory usage: Reuse buffers where possible; avoid unnecessary string allocations in hot paths.
 - Concurrency: Dispatcher processes messages sequentially per line; long-running handlers can delay processing—consider offloading work.
-
-[No sources needed since this section provides general guidance]
+- **Updated**: Exception handling overhead is minimal; prefer specific exceptions over generic ones for better debugging.
 
 ## Troubleshooting Guide
 
@@ -334,27 +420,31 @@ Symptoms:
 - InitializeAsync hangs or returns early.
 - No session created; CurrentSessionId remains null.
 - AgentProcessExited fires immediately.
+- **New**: AcpProtocolVersionException thrown during initialization.
 
 Root causes:
 - Incorrect agent executable path or arguments.
 - Wrong working directory causing permission or path errors.
 - Transport not started or already stopped.
-- Protocol version mismatch warnings.
+- Protocol version mismatch between client and agent.
 
 Resolution steps:
 - Validate command and arguments; test running the agent manually.
 - Set explicit workingDirectory when constructing StdioAgentTransport.
 - Ensure InitializeAsync is called once and only after transport is ready.
+- **Updated**: Handle AcpProtocolVersionException by upgrading client or agent to compatible versions.
 - Inspect AgentInfo.ProtocolVersion and log warnings accordingly.
 
 Diagnostics:
 - Log transport state transitions and process exit codes.
 - Capture stderr lines from the agent process.
 - Temporarily disable handlers to isolate handshake issues.
+- **Updated**: Catch and log AcpProtocolVersionException with version details.
 
 **Section sources**
 - [AcpClient.cs](file://Client/AcpClient.cs)
 - [StdioAgentTransport.cs](file://Transport/StdioAgentTransport.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)
 
 ### Transport Layer Issues
 Symptoms:
@@ -387,28 +477,33 @@ Symptoms:
 - Requests or notifications ignored.
 - Responses never complete pending requests.
 - Unknown session update types fall back to base.
+- **New**: AcpRpcException thrown with specific error codes.
 
 Root causes:
 - Malformed JSON lines.
 - Missing required fields (method, id, result, error).
 - Custom converters not registered.
 - Case-sensitive property name mismatches.
+- Agent returning JSON-RPC error responses.
 
 Resolution steps:
 - Log raw JSON lines before deserialization.
 - Ensure JsonOptions.Default includes JsonRpcMessageConverter and enum converter.
 - Enable case-insensitive property names.
 - Handle unknown derived types gracefully (fallback to base).
+- **Updated**: Catch AcpRpcException and examine ErrorCode and ErrorMessage for debugging.
 
 Diagnostics:
 - Add a global message logger in OnMessageReceived to capture payloads.
 - Validate JSON schema locally against known message shapes.
+- **Updated**: Log AcpRpcException details including error codes and messages.
 
 **Section sources**
 - [JsonRpcDispatcher.cs](file://Protocol/JsonRpcDispatcher.cs)
 - [JsonRpcMessageConverter.cs](file://JsonRpc/JsonRpcMessageConverter.cs)
 - [JsonOptions.cs](file://Infrastructure/JsonOptions.cs)
 - [SessionUpdate.cs](file://Models/SessionUpdate.cs)
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
 
 ### Permission Handler Failures
 Symptoms:
@@ -436,7 +531,7 @@ Diagnostics:
 
 ### File System Access Problems
 Symptoms:
-- fs/read_text_file or fs/write_text_file fail with “File system not available”.
+- fs/read_text_file or fs/write_text_file fail with "File system not available".
 - UnauthorizedAccessException or FileNotFoundException.
 
 Root causes:
@@ -459,7 +554,7 @@ Diagnostics:
 
 ### Terminal Execution Issues
 Symptoms:
-- terminal/create returns “Terminal handler not available”.
+- terminal/create returns "Terminal handler not available".
 - Output empty or commands not executing.
 - WaitForExit never completes.
 
@@ -523,18 +618,24 @@ Recommendations:
 - Use ILogger<AcpClient> for structured logs at key lifecycle points.
 - Log raw JSON lines in a separate channel for debugging.
 - Include correlation IDs for requests and sessions.
+- **Updated**: Log exception details including AcpRpcException and AcpProtocolVersionException with full context.
 
 Implementation tips:
 - Wrap critical sections with try/catch and log exceptions.
 - Avoid excessive logging in hot loops; sample or throttle.
+- **Updated**: Include error codes and messages from AcpRpcException in logs.
+- **Updated**: Log protocol version information when AcpProtocolVersionException occurs.
 
 **Section sources**
 - [AcpClient.cs](file://Client/AcpClient.cs)
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)
 
 ### Diagnostic Tools
 - Process inspection: task manager, procmon, strace/ltrace equivalents.
 - Network-like analysis: capture stdio lines to files for replay.
 - .NET tools: dotnet-trace, dotnet-dump, dotnet-gcdump.
+- **Updated**: Exception analysis tools for examining AcpRpcException and AcpProtocolVersionException details.
 
 [No sources needed since this section provides general guidance]
 
@@ -542,17 +643,18 @@ Implementation tips:
 - CPU profiling: identify slow methods and hot paths.
 - Memory profiling: detect allocations and leaks.
 - I/O profiling: measure file and process I/O latency.
+- **Updated**: Exception frequency analysis to identify problematic operations.
 
 [No sources needed since this section provides general guidance]
 
 ### Common Error Messages, Causes, and Resolutions
-- “Transport is not running.”
+- "Transport is not running."
   - Cause: SendAsync called before StartAsync or after StopAsync.
   - Resolution: Ensure transport state is Running; call StartAsync first.
-- “Dispatcher is not connected to a transport.”
+- "Dispatcher is not connected to a transport."
   - Cause: SendRequestAsync/SendNotificationAsync without Connect.
   - Resolution: Call Connect before sending; verify initialization order.
-- “File system not available” / “Terminal handler not available”
+- "File system not available" / "Terminal handler not available"
   - Cause: Handlers not assigned.
   - Resolution: Assign IFileSystemHandler/ITerminalHandler before InitializeAsync.
 - Protocol version mismatch warning
@@ -561,12 +663,20 @@ Implementation tips:
 - Unknown session update type
   - Cause: New update kind not recognized.
   - Resolution: Library falls back to base type; update models to include new types.
+- **New**: AcpRpcException with JSON-RPC error codes
+  - Cause: Agent returns JSON-RPC error response with specific error code and message.
+  - Resolution: Check ErrorCode against standard JSON-RPC codes (-32600 for invalid request, -32601 for method not found, -32603 for internal error); log ErrorMessage for debugging; implement appropriate error handling logic.
+- **New**: AcpProtocolVersionException with version mismatch
+  - Cause: Client supports one protocol version but agent requires a different version.
+  - Resolution: Upgrade client to match agent's required version or use compatible agent version; log ClientVersion and AgentVersion for compatibility tracking.
 
 **Section sources**
 - [StdioAgentTransport.cs](file://Transport/StdioAgentTransport.cs)
 - [JsonRpcDispatcher.cs](file://Protocol/JsonRpcDispatcher.cs)
 - [AcpClient.cs](file://Client/AcpClient.cs)
 - [SessionUpdate.cs](file://Models/SessionUpdate.cs)
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)
 
 ### Platform-Specific Issues
 - Windows vs Unix path separators and quoting in command arguments.
@@ -604,8 +714,36 @@ Resolutions:
 **Section sources**
 - [Agentic.ACPLibrary.csproj](file://Agentic.ACPLibrary.csproj)
 
+### Exception Handling Best Practices
+**New Section**: Comprehensive guidance for handling the new exception types.
+
+AcpRpcException Handling:
+- Always catch AcpRpcException when calling AcpClient methods
+- Extract ErrorCode for programmatic error handling
+- Log ErrorMessage for debugging and user feedback
+- Implement retry logic for transient errors (e.g., network timeouts)
+- Map specific error codes to user-friendly messages
+
+AcpProtocolVersionException Handling:
+- Catch during InitializeAsync to detect compatibility issues early
+- Compare ClientVersion and AgentVersion for compatibility matrix
+- Provide clear upgrade instructions to users
+- Log version information for automated compatibility checking
+- Consider graceful degradation for minor version differences
+
+Testing Strategies:
+- Use mock transports and dispatchers to simulate error scenarios
+- Verify exception types and properties are correctly set
+- Test error recovery and retry logic
+- Validate logging output contains sufficient debugging information
+
+**Section sources**
+- [AcpClientErrorHandlingTests.cs](file://tests/Agentic.ACPLibrary.Tests/AcpClientErrorHandlingTests.cs)
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)
+
 ## Conclusion
-Effective troubleshooting hinges on understanding the layered architecture: client orchestration, transport lifecycle, JSON-RPC dispatching, and handler implementations. By instrumenting logs, validating configurations, and following the diagnostic steps outlined above, most connection, parsing, handler, and performance issues can be resolved quickly. For persistent problems, leverage .NET profiling tools and capture raw JSON traces to pinpoint root causes.
+Effective troubleshooting hinges on understanding the layered architecture: client orchestration, transport lifecycle, JSON-RPC dispatching, and handler implementations. **Updated** to include comprehensive exception handling with AcpRpcException and AcpProtocolVersionException for enhanced debugging capabilities. By instrumenting logs, validating configurations, following the diagnostic steps outlined above, and properly handling the new exception types, most connection, parsing, handler, performance, and compatibility issues can be resolved quickly. For persistent problems, leverage .NET profiling tools and capture raw JSON traces to pinpoint root causes.
 
 ## Appendices
 
@@ -618,10 +756,13 @@ StartTransport --> ConnectDispatcher["Connect dispatcher"]
 ConnectDispatcher --> RegisterHandlers["Register built-in handlers"]
 RegisterHandlers --> SendInit["Send 'initialize' request"]
 SendInit --> ReceiveResp{"Response received?"}
-ReceiveResp --> |Yes| StoreInfo["Store AgentInfo"]
-ReceiveResp --> |No| Error["Log error and retry/fail"]
+ReceiveResp --> |Yes| CheckVersion{"Protocol version compatible?"}
+CheckVersion --> |No| ThrowVersionEx["Throw AcpProtocolVersionException"]
+CheckVersion --> |Yes| StoreInfo["Store AgentInfo"]
+ReceiveResp --> |No| ThrowRpcEx["Throw AcpRpcException"]
 StoreInfo --> Ready(["Ready"])
-Error --> End(["End"])
+ThrowVersionEx --> End(["End"])
+ThrowRpcEx --> End
 Ready --> End
 ```
 
@@ -629,3 +770,27 @@ Ready --> End
 - [AcpClient.cs](file://Client/AcpClient.cs)
 - [JsonRpcDispatcher.cs](file://Protocol/JsonRpcDispatcher.cs)
 - [StdioAgentTransport.cs](file://Transport/StdioAgentTransport.cs)
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)
+
+### Exception Type Reference
+**New Section**: Quick reference for the new exception types.
+
+AcpRpcException Properties:
+- ErrorCode: int - JSON-RPC error code (e.g., -32600, -32601, -32603)
+- ErrorMessage: string - Descriptive error message from the agent
+
+AcpProtocolVersionException Properties:
+- ClientVersion: int - Protocol version supported by the client
+- AgentVersion: int - Protocol version required by the agent
+
+Common JSON-RPC Error Codes:
+- -32600: Invalid Request
+- -32601: Method not found
+- -32602: Invalid params
+- -32603: Internal error
+- -32000 to -32099: Server error range
+
+**Section sources**
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)

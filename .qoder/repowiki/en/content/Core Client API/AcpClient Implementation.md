@@ -16,7 +16,19 @@
 - [ServiceCollectionExtensions.cs](file://Infrastructure/ServiceCollectionExtensions.cs)
 - [SessionUpdate.cs](file://Models/SessionUpdate.cs)
 - [README.md](file://README.md)
+- [AcpRpcException.cs](file://Client/AcpRpcException.cs)
+- [AcpProtocolVersionException.cs](file://Client/AcpProtocolVersionException.cs)
+- [JsonRpcError.cs](file://JsonRpc/JsonRpcError.cs)
+- [AcpClientErrorHandlingTests.cs](file://tests/Agentic.ACPLibrary.Tests/AcpClientErrorHandlingTests.cs)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Added comprehensive protocol version validation with AcpProtocolVersionException
+- Implemented robust error handling with AcpRpcException for JSON-RPC errors
+- Enhanced request processing with EnsureNoError validation method
+- Updated error handling strategies and troubleshooting guide
+- Added new exception classes and their usage patterns
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -32,6 +44,8 @@
 
 ## Introduction
 This document provides a comprehensive guide to the AcpClient class implementation within the Agentic.ACPLibrary. It explains constructor parameters, dependency injection requirements, and initialization flow. It also details internal architecture including transport integration, JSON-RPC dispatcher coordination, and handler orchestration. Lifecycle management from initialization through shutdown is covered, along with resource disposal patterns. Event handling for SessionUpdated and AgentProcessExited is documented. Error handling strategies, timeout management, and retry logic are analyzed. Performance considerations, thread safety aspects, and memory management patterns are included, alongside practical usage examples and best practices.
+
+**Updated** The AcpClient now includes comprehensive protocol version validation and enhanced error handling with specialized exception types for better error diagnosis and recovery.
 
 ## Project Structure
 The library is organized by feature areas:
@@ -49,36 +63,41 @@ B["IAcpClient"]
 C["IFileSystemHandler"]
 D["IPermissionHandler"]
 E["ITerminalHandler"]
+F["AcpRpcException"]
+G["AcpProtocolVersionException"]
 end
 subgraph "Protocol"
-F["JsonRpcDispatcher"]
-G["IJsonRpcDispatcher"]
-H["RequestTracker"]
+H["JsonRpcDispatcher"]
+I["IJsonRpcDispatcher"]
+J["RequestTracker"]
+K["JsonRpcError"]
 end
 subgraph "Transport"
-I["IAgentTransport"]
-J["StdioAgentTransport"]
+L["IAgentTransport"]
+M["StdioAgentTransport"]
 end
 subgraph "Infrastructure"
-K["JsonOptions"]
-L["ServiceCollectionExtensions"]
+N["JsonOptions"]
+O["ServiceCollectionExtensions"]
 end
 subgraph "Models"
-M["SessionUpdate"]
+P["SessionUpdate"]
 end
-A --> F
-A --> I
+A --> H
+A --> L
 A --> C
 A --> D
 A --> E
-F --> H
-F --> I
-J --> I
-A --> K
-L --> A
-L --> F
-L --> H
-A --> M
+A --> F
+A --> G
+H --> J
+H --> L
+M --> L
+A --> N
+O --> A
+O --> H
+O --> J
+A --> P
 ```
 
 **Diagram sources**
@@ -90,23 +109,28 @@ A --> M
 - [JsonOptions.cs:7-26](file://Infrastructure/JsonOptions.cs#L7-L26)
 - [ServiceCollectionExtensions.cs:14-21](file://Infrastructure/ServiceCollectionExtensions.cs#L14-L21)
 - [SessionUpdate.cs:18-22](file://Models/SessionUpdate.cs#L18-L22)
+- [AcpRpcException.cs:7-28](file://Client/AcpRpcException.cs#L7-L28)
+- [AcpProtocolVersionException.cs:6-21](file://Client/AcpProtocolVersionException.cs#L6-L21)
+- [JsonRpcError.cs:7-18](file://JsonRpc/JsonRpcError.cs#L7-L18)
 
 **Section sources**
 - [README.md:1-33](file://README.md#L1-L33)
 - [ServiceCollectionExtensions.cs:14-21](file://Infrastructure/ServiceCollectionExtensions.cs#L14-L21)
 
 ## Core Components
-- AcpClient: Implements IAcpClient, orchestrates transport start, JSON-RPC dispatcher connection, handler registration, initialize handshake, session lifecycle, prompt sending, cancellation, and shutdown. Exposes events for session updates and agent process exit.
+- AcpClient: Implements IAcpClient, orchestrates transport start, JSON-RPC dispatcher connection, handler registration, initialize handshake, session lifecycle, prompt sending, cancellation, and shutdown. Exposes events for session updates and agent process exit. Now includes comprehensive error handling and protocol version validation.
 - JsonRpcDispatcher: Manages message routing between transport and application-level handlers, tracks pending requests, and serializes/deserializes JSON-RPC messages using shared JsonOptions.
 - RequestTracker: Tracks in-flight requests via TaskCompletionSource keyed by id, supports completion and cancellation.
 - IAgentTransport and StdioAgentTransport: Abstract transport interface and stdio-based implementation that manages a child process, reads lines, and raises events on message receipt and process exit.
 - Handlers: IPermissionHandler, IFileSystemHandler, ITerminalHandler define callbacks for agent-initiated requests.
 - JsonOptions: Centralized System.Text.Json configuration used across serialization.
+- **New Exception Classes**: AcpRpcException for JSON-RPC errors and AcpProtocolVersionException for protocol version mismatches.
 
 Key responsibilities:
-- AcpClient coordinates initialization, session operations, and event wiring.
+- AcpClient coordinates initialization, session operations, event wiring, and comprehensive error handling.
 - JsonRpcDispatcher handles request/response correlation and notification dispatch.
 - StdioAgentTransport encapsulates process lifecycle and IO.
+- **Enhanced Error Handling**: All request methods now validate responses and throw appropriate exceptions.
 
 **Section sources**
 - [AcpClient.cs:12-45](file://Client/AcpClient.cs#L12-L45)
@@ -115,9 +139,13 @@ Key responsibilities:
 - [IAgentTransport.cs:6-28](file://Transport/IAgentTransport.cs#L6-L28)
 - [StdioAgentTransport.cs:8-28](file://Transport/StdioAgentTransport.cs#L8-L28)
 - [JsonOptions.cs:7-26](file://Infrastructure/JsonOptions.cs#L7-L26)
+- [AcpRpcException.cs:7-28](file://Client/AcpRpcException.cs#L7-L28)
+- [AcpProtocolVersionException.cs:6-21](file://Client/AcpProtocolVersionException.cs#L6-L21)
 
 ## Architecture Overview
-The AcpClient composes a transport and a JSON-RPC dispatcher to communicate with an external agent process over stdio. During initialization, it starts the transport, connects the dispatcher, registers built-in handlers for permissions, file system, and terminal operations, subscribes to process exit and session update notifications, and performs the initialize handshake. Subsequent operations create or load sessions and send prompts; streaming updates arrive via events. Shutdown disconnects the dispatcher and stops the transport.
+The AcpClient composes a transport and a JSON-RPC dispatcher to communicate with an external agent process over stdio. During initialization, it starts the transport, connects the dispatcher, registers built-in handlers for permissions, file system, and terminal operations, subscribes to process exit and session update notifications, and performs the initialize handshake with protocol version validation. Subsequent operations create or load sessions and send prompts; streaming updates arrive via events. Shutdown disconnects the dispatcher and stops the transport.
+
+**Updated** The initialization process now includes protocol version validation that throws AcpProtocolVersionException if versions are incompatible, and all request methods use EnsureNoError for consistent error handling.
 
 ```mermaid
 sequenceDiagram
@@ -140,7 +168,13 @@ Transport-->>Agent : Write line
 Agent-->>Transport : Read line
 Transport-->>Dispatcher : MessageReceived(line)
 Dispatcher-->>Client : OnMessageReceived -> complete request
+Client->>Client : EnsureNoError(response)
+Client->>Client : Validate protocol version
+alt Version mismatch
+Client-->>App : Throw AcpProtocolVersionException
+else Version matches
 Client-->>App : InitializeResponse
+end
 App->>Client : CreateSessionAsync(cwd)
 Client->>Dispatcher : SendRequestAsync("session/new", {cwd})
 Dispatcher->>Transport : SendAsync(json)
@@ -148,6 +182,7 @@ Transport-->>Agent : Write line
 Agent-->>Transport : Read line
 Transport-->>Dispatcher : MessageReceived(line)
 Dispatcher-->>Client : Complete request -> sessionId
+Client->>Client : EnsureNoError(response)
 Client-->>App : sessionId
 App->>Client : SendPromptAsync(sessionId, prompt)
 Client->>Dispatcher : SendRequestAsync("session/prompt", request)
@@ -156,6 +191,7 @@ Transport-->>Agent : Write line
 Agent-->>Transport : Read line
 Transport-->>Dispatcher : MessageReceived(line)
 Dispatcher-->>Client : Complete request -> response
+Client->>Client : EnsureNoError(response)
 Client-->>App : SessionPromptResponse
 Note over Transport,Dispatcher : Notifications ("session/update") dispatched to AcpClient.SessionUpdated
 ```
@@ -177,10 +213,11 @@ Note over Transport,Dispatcher : Notifications ("session/update") dispatched to 
 - Initialization process:
   - Starts transport, connects dispatcher, subscribes to process exit, registers notification and request handlers for session updates, permission requests, file system read/write, and terminal operations.
   - Sends initialize request with protocol version, client capabilities, and implementation info. Stores AgentInfo and validates protocol version.
+  - **Enhanced**: Protocol version validation throws AcpProtocolVersionException if versions don't match.
 - Session lifecycle:
-  - CreateSessionAsync sends session/new and stores CurrentSessionId.
-  - LoadSessionAsync loads an existing session and sets CurrentSessionId.
-  - SendPromptAsync sends session/prompt and returns the final response; streaming updates are delivered via SessionUpdated.
+  - CreateSessionAsync sends session/new and stores CurrentSessionId with error validation.
+  - LoadSessionAsync loads an existing session and sets CurrentSessionId with error validation.
+  - SendPromptAsync sends session/prompt and returns the final response; streaming updates are delivered via SessionUpdated with error validation.
   - CancelSessionAsync sends session/cancel notification.
 - Events:
   - SessionUpdated: Raised when session/update notifications are received; deserialized into SessionUpdateParams.Update.
@@ -188,6 +225,9 @@ Note over Transport,Dispatcher : Notifications ("session/update") dispatched to 
 - Shutdown and disposal:
   - ShutdownAsync disconnects the dispatcher and stops the transport.
   - DisposeAsync calls ShutdownAsync and suppresses finalization.
+- **New Error Handling**:
+  - EnsureNoError method validates responses and throws AcpRpcException for JSON-RPC errors.
+  - All public methods now include proper error handling and validation.
 
 ```mermaid
 classDiagram
@@ -210,6 +250,18 @@ class AcpClient {
 +ValueTask DisposeAsync()
 +void RegisterRequestHandler(string, Func~JsonRpcRequest, Task~JsonRpcResponse~~)
 +void RegisterNotificationHandler(string, Func~JsonRpcNotification, Task~)
+-private void EnsureNoError(JsonRpcResponse)
+}
+class AcpRpcException {
++int ErrorCode
++string ErrorMessage
++AcpRpcException(int, string)
++AcpRpcException(int, string, Exception)
+}
+class AcpProtocolVersionException {
++int ClientVersion
++int AgentVersion
++AcpProtocolVersionException(int, int)
 }
 class IAgentTransport {
 <<interface>>
@@ -232,18 +284,23 @@ class IJsonRpcDispatcher {
 }
 AcpClient --> IAgentTransport : "uses"
 AcpClient --> IJsonRpcDispatcher : "uses"
+AcpClient --> AcpRpcException : "throws"
+AcpClient --> AcpProtocolVersionException : "throws"
 ```
 
 **Diagram sources**
 - [AcpClient.cs:12-45](file://Client/AcpClient.cs#L12-L45)
 - [IAgentTransport.cs:6-28](file://Transport/IAgentTransport.cs#L6-L28)
 - [IJsonRpcDispatcher.cs:5-13](file://Protocol/IJsonRpcDispatcher.cs#L5-L13)
+- [AcpRpcException.cs:7-28](file://Client/AcpRpcException.cs#L7-L28)
+- [AcpProtocolVersionException.cs:6-21](file://Client/AcpProtocolVersionException.cs#L6-L21)
 
 **Section sources**
 - [AcpClient.cs:40-45](file://Client/AcpClient.cs#L40-L45)
 - [AcpClient.cs:48-182](file://Client/AcpClient.cs#L48-L182)
 - [AcpClient.cs:185-224](file://Client/AcpClient.cs#L185-L224)
 - [AcpClient.cs:226-240](file://Client/AcpClient.cs#L226-L240)
+- [AcpClient.cs:255-262](file://Client/AcpClient.cs#L255-L262)
 - [ServiceCollectionExtensions.cs:14-21](file://Infrastructure/ServiceCollectionExtensions.cs#L14-L21)
 
 ### JsonRpcDispatcher and RequestTracker
@@ -286,7 +343,7 @@ IgnoreNotif --> End
 
 **Section sources**
 - [JsonRpcDispatcher.cs:21-47](file://Protocol/JsonRpcDispatcher.cs#L21-L47)
-- [JsonRpcDispatcher.cs:66-84](file://Protocol/JsonRpcDispatcher.cs#L66-L84)
+- [JsonRpcDispatcher.cs:66-84](file://Protocol/JsonRpcDispatcher.cs#L66-84)
 - [JsonRpcDispatcher.cs:86-122](file://Protocol/JsonRpcDispatcher.cs#L86-L122)
 - [RequestTracker.cs:6-30](file://Protocol/RequestTracker.cs#L6-L30)
 
@@ -350,6 +407,7 @@ These handlers are registered during initialization and invoked by the dispatche
 ### Lifecycle Management and Resource Disposal
 - InitializeAsync:
   - Starts transport, connects dispatcher, registers handlers, performs initialize handshake, and stores AgentInfo.
+  - **Enhanced**: Validates protocol version and throws AcpProtocolVersionException if incompatible.
 - ShutdownAsync:
   - Disconnects dispatcher (cancels pending requests), stops transport.
 - DisposeAsync:
@@ -358,6 +416,26 @@ These handlers are registered during initialization and invoked by the dispatche
 **Section sources**
 - [AcpClient.cs:48-182](file://Client/AcpClient.cs#L48-L182)
 - [AcpClient.cs:226-240](file://Client/AcpClient.cs#L226-L240)
+
+### Enhanced Error Handling System
+**New** The AcpClient now implements comprehensive error handling with two specialized exception types:
+
+- **AcpRpcException**: Thrown when the Agent returns a JSON-RPC error response. Contains ErrorCode and ErrorMessage properties for detailed error information.
+- **AcpProtocolVersionException**: Thrown when the Agent's protocol version is incompatible with the client. Contains ClientVersion and AgentVersion properties.
+- **EnsureNoError Method**: Centralized validation method called after every request to check for JSON-RPC errors and throw appropriate exceptions.
+
+Error handling flow:
+1. All request methods call `_dispatcher.SendRequestAsync()` to get a response
+2. `EnsureNoError()` validates the response for errors
+3. If an error exists, throws `AcpRpcException` with the error code and message
+4. After successful initialization, protocol version is validated
+5. If versions don't match, throws `AcpProtocolVersionException`
+
+**Section sources**
+- [AcpClient.cs:255-262](file://Client/AcpClient.cs#L255-L262)
+- [AcpClient.cs:176-181](file://Client/AcpClient.cs#L176-L181)
+- [AcpRpcException.cs:7-28](file://Client/AcpRpcException.cs#L7-L28)
+- [AcpProtocolVersionException.cs:6-21](file://Client/AcpProtocolVersionException.cs#L6-L21)
 
 ## Dependency Analysis
 AcpClient depends on:
@@ -374,10 +452,14 @@ StdioAgentTransport implements IAgentTransport and manages a child process.
 DI registration:
 - AddAcpClient registers JsonRpcDispatcher and RequestTracker as transient, and AcpClient as singleton.
 
+**Updated** AcpClient now also depends on the new exception classes for error handling.
+
 ```mermaid
 graph LR
 A["AcpClient"] --> T["IAgentTransport"]
 A --> D["IJsonRpcDispatcher"]
+A --> E1["AcpRpcException"]
+A --> E2["AcpProtocolVersionException"]
 D --> RT["IRequestTracker"]
 D --> T
 ImplT["StdioAgentTransport"] --> T
@@ -392,6 +474,8 @@ ImplRT["RequestTracker"] --> RT
 - [IAgentTransport.cs:6-28](file://Transport/IAgentTransport.cs#L6-L28)
 - [StdioAgentTransport.cs:8-28](file://Transport/StdioAgentTransport.cs#L8-L28)
 - [ServiceCollectionExtensions.cs:14-21](file://Infrastructure/ServiceCollectionExtensions.cs#L14-L21)
+- [AcpRpcException.cs:7-28](file://Client/AcpRpcException.cs#L7-L28)
+- [AcpProtocolVersionException.cs:6-21](file://Client/AcpProtocolVersionException.cs#L6-L21)
 
 **Section sources**
 - [ServiceCollectionExtensions.cs:14-21](file://Infrastructure/ServiceCollectionExtensions.cs#L14-L21)
@@ -410,6 +494,9 @@ ImplRT["RequestTracker"] --> RT
 - Throughput:
   - Batch UI updates for SessionUpdated events to reduce churn.
   - Reuse JsonSerializerOptions where possible (already centralized via JsonOptions.Default).
+- **Enhanced Error Handling**:
+  - Exception throwing is lightweight and only occurs on error conditions.
+  - EnsureNoError validation is minimal overhead compared to network I/O.
 
 [No sources needed since this section provides general guidance]
 
@@ -419,24 +506,33 @@ Common issues and resolutions:
   - Ensure InitializeAsync has been called before sending requests; otherwise, InvalidOperationException is thrown.
 - Missing handlers:
   - If PermissionHandler, FileSystemHandler, or TerminalHandler are not set, requests return errors or default outcomes. Assign appropriate implementations before InitializeAsync.
-- Protocol version mismatch:
-  - A warning is logged if the agent’s protocol version differs from the client’s expected version.
+- **New Protocol version mismatch**:
+  - AcpProtocolVersionException is thrown if the agent's protocol version doesn't match the client's supported version. Check both client and agent versions.
+- **New JSON-RPC errors**:
+  - AcpRpcException is thrown when the agent returns an error response. Inspect ErrorCode and ErrorMessage properties for details.
 - Process exit:
   - Subscribe to AgentProcessExited to detect unexpected termination; handle cleanup accordingly.
 - Timeouts and cancellations:
   - Pass CancellationToken to async methods to support cancellation; ensure handlers respect cancellation tokens.
 - Error propagation:
-  - JsonRpcException is thrown when server responses contain errors; catch and inspect Code and Message.
+  - Catch AcpRpcException and inspect ErrorCode and ErrorMessage properties instead of generic JsonRpcException.
+
+**Updated** Added new troubleshooting scenarios for protocol version mismatches and JSON-RPC error handling.
 
 **Section sources**
 - [JsonRpcDispatcher.cs:27-31](file://Protocol/JsonRpcDispatcher.cs#L27-L31)
 - [AcpClient.cs:74-99](file://Client/AcpClient.cs#L74-L99)
 - [AcpClient.cs:102-147](file://Client/AcpClient.cs#L102-L147)
 - [AcpClient.cs:176-179](file://Client/AcpClient.cs#L176-L179)
+- [AcpClient.cs:255-262](file://Client/AcpClient.cs#L255-L262)
 - [RequestTracker.cs:19-30](file://Protocol/RequestTracker.cs#L19-L30)
+- [AcpRpcException.cs:7-28](file://Client/AcpRpcException.cs#L7-L28)
+- [AcpProtocolVersionException.cs:6-21](file://Client/AcpProtocolVersionException.cs#L6-L21)
 
 ## Conclusion
-AcpClient provides a robust, extensible client for the Agent Client Protocol over stdio with clear separation of concerns: transport, dispatching, and handlers. Its initialization sequence establishes communication, registers handlers, and performs the handshake. Lifecycle management ensures proper resource disposal. Event-driven updates enable responsive UIs. By following best practices—assigning handlers early, respecting cancellation, and handling errors—you can build reliable integrations with ACP-compliant agents.
+AcpClient provides a robust, extensible client for the Agent Client Protocol over stdio with clear separation of concerns: transport, dispatching, and handlers. Its initialization sequence establishes communication, registers handlers, and performs the handshake with protocol version validation. Lifecycle management ensures proper resource disposal. Event-driven updates enable responsive UIs. By following best practices—assigning handlers early, respecting cancellation, and handling errors with the new exception types—you can build reliable integrations with ACP-compliant agents.
+
+**Updated** The enhanced error handling system provides better diagnostics and recovery options through specialized exception types and consistent error validation throughout all operations.
 
 [No sources needed since this section summarizes without analyzing specific files]
 
@@ -452,11 +548,17 @@ AcpClient provides a robust, extensible client for the Agent Client Protocol ove
   - Subscribe to SessionUpdated to render incremental content, tool call notifications, and usage updates.
 - Cancellation:
   - Propagate CancellationToken through async calls to allow timely cancellation.
-- Error handling:
-  - Catch JsonRpcException and log codes/messages; implement fallback behavior.
+- **Enhanced Error handling**:
+  - Catch AcpRpcException for JSON-RPC errors and inspect ErrorCode/ErrorMessage properties.
+  - Catch AcpProtocolVersionException for protocol version mismatches and check ClientVersion/AgentVersion properties.
+  - Implement fallback behavior based on error codes.
 - DI registration:
   - Use ServiceCollectionExtensions.AddAcpClient to register services; prefer singletons for clients when appropriate.
+
+**Updated** Added new error handling patterns for the specialized exception types.
 
 **Section sources**
 - [README.md:8-33](file://README.md#L8-L33)
 - [ServiceCollectionExtensions.cs:14-21](file://Infrastructure/ServiceCollectionExtensions.cs#L14-L21)
+- [AcpClientErrorHandlingTests.cs:55-100](file://tests/Agentic.ACPLibrary.Tests/AcpClientErrorHandlingTests.cs#L55-L100)
+- [AcpClientErrorHandlingTests.cs:102-145](file://tests/Agentic.ACPLibrary.Tests/AcpClientErrorHandlingTests.cs#L102-L145)

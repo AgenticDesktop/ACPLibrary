@@ -1,0 +1,1 @@
+xUnit 2.9.3 with Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector for coverage, targeting net10.0 with ImplicitUsings and nullable enabled; uses System.Text.Json throughout for serializing/deserializing JSON-RPC messages.

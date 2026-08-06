@@ -17,6 +17,14 @@
 - [README.md](file://README.md)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Enhanced error handling with structured JSON-RPC error responses (-32601 Method not found, -32603 Internal error)
+- Integrated Microsoft.Extensions.Logging for comprehensive logging capabilities
+- Improved request handler management with proper exception handling and error response generation
+- Added structured error response mechanism via SendErrorResponseAsync method
+- Enhanced debugging and troubleshooting capabilities through logging integration
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -29,11 +37,11 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-This document explains the JSON-RPC protocol handling system used to communicate with ACP-compliant agents over stdio. It focuses on the IJsonRpcDispatcher interface and JsonRpcDispatcher implementation for message routing, request/response correlation, and handler dispatching. It also covers the RequestTracker component for managing pending requests and cancellation, the transport abstraction, error handling strategies, concurrent processing characteristics, performance considerations, and debugging techniques.
+This document explains the JSON-RPC protocol handling system used to communicate with ACP-compliant agents over stdio. It focuses on the IJsonRpcDispatcher interface and JsonRpcDispatcher implementation for message routing, request/response correlation, and handler dispatching. The system now includes enhanced error handling with structured JSON-RPC error responses, Microsoft.Extensions.Logging integration for comprehensive diagnostics, and improved request handler management with proper exception handling and error response generation.
 
 ## Project Structure
 The protocol layer is organized into:
-- Transport: IAgentTransport and StdioAgentTransport provide a line-based JSON-RPC channel over a child process’s standard streams.
+- Transport: IAgentTransport and StdioAgentTransport provide a line-based JSON-RPC channel over a child process's standard streams.
 - Protocol: IJsonRpcDispatcher and JsonRpcDispatcher implement request/response correlation, method-based dispatch, and notification handling. IRequestTracker and RequestTracker manage pending requests and lifecycle.
 - JsonRpc: Message types (request, response, notification, error) and shared options for serialization.
 - Infrastructure: Shared JSON serialization options and converters.
@@ -59,6 +67,7 @@ M_ERR["JsonRpcError"]
 end
 subgraph "Infrastructure"
 JOPT["JsonOptions"]
+LOG["Microsoft.Extensions.Logging"]
 end
 T_IF --> T_STDIO
 P_IF --> P_IMPL
@@ -70,13 +79,14 @@ P_IMPL --> M_RES
 P_IMPL --> M_NOTIF
 P_IMPL --> M_BASE
 P_IMPL --> JOPT
+P_IMPL --> LOG
 ```
 
 **Diagram sources**
 - [IAgentTransport.cs:1-39](file://Transport/IAgentTransport.cs#L1-L39)
 - [StdioAgentTransport.cs:1-147](file://Transport/StdioAgentTransport.cs#L1-L147)
 - [IJsonRpcDispatcher.cs:1-14](file://Protocol/IJsonRpcDispatcher.cs#L1-L14)
-- [JsonRpcDispatcher.cs:1-124](file://Protocol/JsonRpcDispatcher.cs#L1-L124)
+- [JsonRpcDispatcher.cs:1-159](file://Protocol/JsonRpcDispatcher.cs#L1-L159)
 - [IRequestTracker.cs:1-11](file://Protocol/IRequestTracker.cs#L1-L11)
 - [RequestTracker.cs:1-52](file://Protocol/RequestTracker.cs#L1-L52)
 - [JsonRpcMessage.cs:1-14](file://JsonRpc/JsonRpcMessage.cs#L1-L14)
@@ -91,7 +101,7 @@ P_IMPL --> JOPT
 
 ## Core Components
 - IJsonRpcDispatcher: Defines connection management, sending requests and notifications, registering handlers, and disconnecting.
-- JsonRpcDispatcher: Implements the dispatcher, wires up transport events, serializes messages, correlates responses via RequestTracker, and routes incoming messages to registered handlers.
+- JsonRpcDispatcher: Implements the dispatcher, wires up transport events, serializes messages, correlates responses via RequestTracker, routes incoming messages to registered handlers, and provides structured error responses with Microsoft.Extensions.Logging integration.
 - IRequestTracker and RequestTracker: Provide thread-safe tracking of pending requests using TaskCompletionSource, assign monotonically increasing IDs, complete or cancel requests, and throw typed exceptions for errors.
 - Transport Abstraction: IAgentTransport exposes StartAsync, SendAsync, MessageReceived event, and lifecycle events; StdioAgentTransport implements it over a child process.
 
@@ -99,10 +109,12 @@ Key responsibilities:
 - Serialization/deserialization uses shared JsonOptions with case-insensitive property names and null-omission.
 - Method-based routing uses ConcurrentDictionary for low contention registration and lookup.
 - Correlation uses unique long IDs and per-request TaskCompletionSource.
+- **Enhanced**: Structured error responses with standardized JSON-RPC error codes (-32601 for method not found, -32603 for internal errors).
+- **Enhanced**: Comprehensive logging integration for debugging and monitoring.
 
 **Section sources**
 - [IJsonRpcDispatcher.cs:1-14](file://Protocol/IJsonRpcDispatcher.cs#L1-L14)
-- [JsonRpcDispatcher.cs:1-124](file://Protocol/JsonRpcDispatcher.cs#L1-L124)
+- [JsonRpcDispatcher.cs:1-159](file://Protocol/JsonRpcDispatcher.cs#L1-L159)
 - [IRequestTracker.cs:1-11](file://Protocol/IRequestTracker.cs#L1-L11)
 - [RequestTracker.cs:1-52](file://Protocol/RequestTracker.cs#L1-L52)
 - [IAgentTransport.cs:1-39](file://Transport/IAgentTransport.cs#L1-L39)
@@ -110,7 +122,7 @@ Key responsibilities:
 - [JsonOptions.cs:1-28](file://Infrastructure/JsonOptions.cs#L1-L28)
 
 ## Architecture Overview
-The dispatcher connects to a transport, subscribes to incoming messages, and routes them based on type and method name. Outgoing requests are correlated by ID and awaited until a response arrives or cancellation occurs.
+The dispatcher connects to a transport, subscribes to incoming messages, and routes them based on type and method name. Outgoing requests are correlated by ID and awaited until a response arrives or cancellation occurs. The system now includes robust error handling and comprehensive logging capabilities.
 
 ```mermaid
 sequenceDiagram
@@ -134,8 +146,14 @@ RT-->>Disp : completed
 Disp-->>App : JsonRpcResponse
 else Request
 Disp->>H : Invoke handler(request)
+alt Handler Success
 H-->>Disp : JsonRpcResponse
 Disp->>Tr : SendAsync(response json)
+else Handler Exception
+H-->>Disp : Exception
+Disp->>Disp : SendErrorResponseAsync(-32603)
+Disp->>Tr : SendAsync(error json)
+end
 else Notification
 Disp->>H : Invoke handler(notification)
 end
@@ -145,7 +163,7 @@ Disp->>Tr : Unsubscribe MessageReceived
 ```
 
 **Diagram sources**
-- [JsonRpcDispatcher.cs:21-84](file://Protocol/JsonRpcDispatcher.cs#L21-L84)
+- [JsonRpcDispatcher.cs:25-88](file://Protocol/JsonRpcDispatcher.cs#L25-L88)
 - [RequestTracker.cs:11-39](file://Protocol/RequestTracker.cs#L11-L39)
 - [IAgentTransport.cs:1-39](file://Transport/IAgentTransport.cs#L1-L39)
 
@@ -158,6 +176,8 @@ Responsibilities:
 - Register request and notification handlers keyed by method name.
 - Correlate responses to requests using RequestTracker.
 - Clean up subscriptions and pending requests on disconnect.
+- **Enhanced**: Generate structured JSON-RPC error responses for missing methods and handler exceptions.
+- **Enhanced**: Comprehensive logging integration for debugging and monitoring.
 
 Concurrency model:
 - Handlers are invoked asynchronously. The dispatcher does not serialize handler execution; concurrency depends on how many inbound messages arrive concurrently.
@@ -165,7 +185,10 @@ Concurrency model:
 
 Error handling:
 - If transport is not connected, operations throw InvalidOperationException.
-- Incoming message deserialization or handler exceptions are caught and ignored at the dispatcher level to avoid crashing the pipeline. Errors from responses are surfaced to callers via JsonRpcException when correlating responses.
+- Incoming message deserialization or handler exceptions are caught and logged at the dispatcher level to avoid crashing the pipeline.
+- **Enhanced**: Missing method handlers return structured error responses with code -32601 (Method not found).
+- **Enhanced**: Handler exceptions return structured error responses with code -32603 (Internal error).
+- Errors from responses are surfaced to callers via JsonRpcException when correlating responses.
 
 Timeouts and cancellation:
 - Requests accept a CancellationToken that propagates to both transport.SendAsync and WaitAsync on the TaskCompletionSource.
@@ -183,6 +206,7 @@ class IJsonRpcDispatcher {
 }
 class JsonRpcDispatcher {
 -_requestTracker : IRequestTracker
+-_logger : ILogger<JsonRpcDispatcher>
 -_requestHandlers : ConcurrentDictionary<string, Func<JsonRpcRequest, Task<JsonRpcResponse>>>
 -_notificationHandlers : ConcurrentDictionary<string, Func<JsonRpcNotification, Task>>
 -_transport : IAgentTransport?
@@ -193,6 +217,8 @@ class JsonRpcDispatcher {
 +RegisterNotificationHandler(method, handler)
 +DisconnectAsync()
 -OnMessageReceivedAsync(jsonLine)
+-HandleRequestAsync(request)
+-SendErrorResponseAsync(id, code, message)
 }
 class IRequestTracker {
 +CreatePendingRequest() (long id, TaskCompletionSource<JsonRpcResponse>)
@@ -209,17 +235,18 @@ class RequestTracker {
 IJsonRpcDispatcher <|.. JsonRpcDispatcher
 IRequestTracker <|.. RequestTracker
 JsonRpcDispatcher --> IRequestTracker : "uses"
+JsonRpcDispatcher --> ILogger : "uses"
 ```
 
 **Diagram sources**
 - [IJsonRpcDispatcher.cs:1-14](file://Protocol/IJsonRpcDispatcher.cs#L1-L14)
-- [JsonRpcDispatcher.cs:1-124](file://Protocol/JsonRpcDispatcher.cs#L1-L124)
+- [JsonRpcDispatcher.cs:1-159](file://Protocol/JsonRpcDispatcher.cs#L1-L159)
 - [IRequestTracker.cs:1-11](file://Protocol/IRequestTracker.cs#L1-L11)
 - [RequestTracker.cs:1-52](file://Protocol/RequestTracker.cs#L1-L52)
 
 **Section sources**
-- [JsonRpcDispatcher.cs:21-84](file://Protocol/JsonRpcDispatcher.cs#L21-L84)
-- [JsonRpcDispatcher.cs:86-123](file://Protocol/JsonRpcDispatcher.cs#L86-L123)
+- [JsonRpcDispatcher.cs:25-88](file://Protocol/JsonRpcDispatcher.cs#L25-L88)
+- [JsonRpcDispatcher.cs:120-157](file://Protocol/JsonRpcDispatcher.cs#L120-L157)
 
 ### RequestTracker
 Responsibilities:
@@ -327,7 +354,7 @@ Serialization uses JsonOptions.Default which:
 - [JsonOptions.cs:1-28](file://Infrastructure/JsonOptions.cs#L1-L28)
 
 ### Message Flow from Transport to Application Handlers
-Incoming messages flow through the dispatcher’s OnMessageReceivedAsync:
+Incoming messages flow through the dispatcher's OnMessageReceivedAsync:
 - Deserialize to JsonRpcMessage.
 - Branch by concrete type:
   - Response: correlate by id and complete the corresponding TaskCompletionSource.
@@ -339,6 +366,11 @@ Outgoing requests:
 - Serialize and send via transport.
 - Await correlation result or cancellation.
 
+**Enhanced Error Handling**:
+- Missing method handlers trigger structured error response with code -32601.
+- Handler exceptions are caught and converted to structured error responses with code -32603.
+- All errors are logged with detailed context information.
+
 ```mermaid
 flowchart TD
 In(["OnMessageReceivedAsync(jsonLine)"]) --> Deserialize["Deserialize to JsonRpcMessage"]
@@ -347,22 +379,27 @@ TypeCheck --> |Response| Correlate["TryCompleteRequest(id, response)"]
 TypeCheck --> |Request| LookupReq["Lookup handler by method"]
 TypeCheck --> |Notification| LookupNotif["Lookup handler by method"]
 LookupReq --> |Found| InvokeReq["Invoke handler(request)"]
-InvokeReq --> SendResp["Serialize and SendAsync(response)"]
+InvokeReq --> |Success| SendResp["Serialize and SendAsync(response)"]
+InvokeReq --> |Exception| HandleEx["Catch exception"]
+HandleEx --> LogEx["Log error details"]
+LogEx --> SendErr["SendErrorResponseAsync(-32603)"]
+SendErr --> Done(["Done"])
 LookupNotif --> |Found| InvokeNotif["Invoke handler(notification)"]
-Correlate --> Done(["Done"])
+Correlate --> Done
 SendResp --> Done
 InvokeNotif --> Done
-LookupReq --> |NotFound| IgnoreReq["Ignore request"]
+LookupReq --> |NotFound| LogWarn["Log warning - no handler"]
+LogWarn --> SendMethodErr["SendErrorResponseAsync(-32601)"]
+SendMethodErr --> Done
 LookupNotif --> |NotFound| IgnoreNotif["Ignore notification"]
-IgnoreReq --> Done
 IgnoreNotif --> Done
 ```
 
 **Diagram sources**
-- [JsonRpcDispatcher.cs:86-123](file://Protocol/JsonRpcDispatcher.cs#L86-L123)
+- [JsonRpcDispatcher.cs:90-157](file://Protocol/JsonRpcDispatcher.cs#L90-L157)
 
 **Section sources**
-- [JsonRpcDispatcher.cs:86-123](file://Protocol/JsonRpcDispatcher.cs#L86-L123)
+- [JsonRpcDispatcher.cs:90-157](file://Protocol/JsonRpcDispatcher.cs#L90-L157)
 
 ### Examples of Registering Custom Handlers
 - Register a custom request handler for a specific method name.
@@ -370,23 +407,29 @@ IgnoreNotif --> Done
 
 These registrations are typically performed before starting the client or dispatcher usage. See the README example for guidance on where and how to register handlers.
 
+**Enhanced Error Handling**:
+- Unregistered methods automatically receive structured error responses with code -32601.
+- Handler exceptions are automatically converted to structured error responses with code -32603.
+- All errors are logged with detailed context for debugging.
+
 **Section sources**
 - [README.md:55-70](file://README.md#L55-L70)
-- [JsonRpcDispatcher.cs:66-74](file://Protocol/JsonRpcDispatcher.cs#L66-L74)
+- [JsonRpcDispatcher.cs:70-78](file://Protocol/JsonRpcDispatcher.cs#L70-L78)
 
 ## Dependency Analysis
 High-level dependencies:
-- JsonRpcDispatcher depends on IAgentTransport for IO, IRequestTracker for correlation, and JsonOptions for serialization.
+- JsonRpcDispatcher depends on IAgentTransport for IO, IRequestTracker for correlation, JsonOptions for serialization, and Microsoft.Extensions.Logging for logging.
 - RequestTracker depends only on core .NET collections and JsonRpc types.
 - StdioAgentTransport depends on OS process APIs and System.IO.
 
 Coupling and cohesion:
-- Dispatcher has clear separation between IO (transport), correlation (tracker), and routing (handlers).
+- Dispatcher has clear separation between IO (transport), correlation (tracker), routing (handlers), and logging.
 - Handlers are decoupled via method-name keys.
+- **Enhanced**: Logging dependency is optional and defaults to NullLogger for zero-overhead scenarios.
 
 Potential issues:
 - No built-in timeout for awaiting responses beyond CancellationToken propagation; callers must supply appropriate timeouts.
-- Exceptions inside handlers are swallowed at the dispatcher level; ensure handlers surface meaningful diagnostics.
+- Exceptions inside handlers are caught and converted to structured error responses; ensure handlers surface meaningful diagnostics.
 
 ```mermaid
 graph LR
@@ -396,19 +439,20 @@ JsonRpcDispatcher --> JsonOptions
 JsonRpcDispatcher --> JsonRpcRequest
 JsonRpcDispatcher --> JsonRpcResponse
 JsonRpcDispatcher --> JsonRpcNotification
+JsonRpcDispatcher --> ILogger
 RequestTracker --> JsonRpcResponse
 StdioAgentTransport --> IAgentTransport
 ```
 
 **Diagram sources**
-- [JsonRpcDispatcher.cs:1-124](file://Protocol/JsonRpcDispatcher.cs#L1-L124)
+- [JsonRpcDispatcher.cs:1-159](file://Protocol/JsonRpcDispatcher.cs#L1-L159)
 - [RequestTracker.cs:1-52](file://Protocol/RequestTracker.cs#L1-L52)
 - [IAgentTransport.cs:1-39](file://Transport/IAgentTransport.cs#L1-L39)
 - [StdioAgentTransport.cs:1-147](file://Transport/StdioAgentTransport.cs#L1-L147)
 - [JsonOptions.cs:1-28](file://Infrastructure/JsonOptions.cs#L1-L28)
 
 **Section sources**
-- [JsonRpcDispatcher.cs:1-124](file://Protocol/JsonRpcDispatcher.cs#L1-L124)
+- [JsonRpcDispatcher.cs:1-159](file://Protocol/JsonRpcDispatcher.cs#L1-L159)
 - [RequestTracker.cs:1-52](file://Protocol/RequestTracker.cs#L1-L52)
 - [IAgentTransport.cs:1-39](file://Transport/IAgentTransport.cs#L1-L39)
 - [StdioAgentTransport.cs:1-147](file://Transport/StdioAgentTransport.cs#L1-L147)
@@ -420,28 +464,31 @@ StdioAgentTransport --> IAgentTransport
 - Async I/O: Transport reads lines asynchronously; avoid blocking in handlers to prevent backpressure.
 - Memory: Pending requests are removed after completion/cancellation; ensure proper cleanup on disconnect to avoid memory leaks.
 - Throughput: Keep handler logic lightweight; offload heavy work to background tasks and return promptly.
-
-[No sources needed since this section provides general guidance]
+- **Enhanced**: Logging overhead is minimal with NullLogger default; structured logging can be enabled without performance impact.
+- **Enhanced**: Error response generation is optimized to minimize allocations and network overhead.
 
 ## Troubleshooting Guide
 Common issues and remedies:
 - Not connected: Sending requests or notifications without connecting throws an exception. Ensure Connect is called before use.
-- Missing handler: If no handler is registered for a method, incoming requests/notifications are silently ignored. Verify registrations.
-- Deserialization failures: Invalid JSON or mismatched fields cause exceptions that are caught and ignored. Validate payloads and check logs.
+- Missing handler: If no handler is registered for a method, incoming requests receive structured error responses with code -32601. Verify registrations.
+- Deserialization failures: Invalid JSON or mismatched fields cause exceptions that are caught and logged. Validate payloads and check logs.
 - Long-running requests: Without timeouts, requests may hang indefinitely. Use CancellationToken with appropriate timeouts.
 - Process exit: Monitor ProcessExited and TransportFaulted events to detect transport failures.
+- **Enhanced**: Handler exceptions are automatically converted to structured error responses with code -32603 and logged with full stack traces.
 
 Debugging techniques:
+- Enable Microsoft.Extensions.Logging to capture detailed diagnostic information.
 - Log raw JSON lines around transport boundaries to inspect payload shapes.
 - Wrap handler invocations with try/catch and log method names and parameters.
 - Use structured logging to correlate requests by id.
 - Inspect TransportState to confirm lifecycle transitions.
+- **Enhanced**: Monitor error response patterns to identify common failure modes.
 
 **Section sources**
-- [JsonRpcDispatcher.cs:27-31](file://Protocol/JsonRpcDispatcher.cs#L27-L31)
-- [JsonRpcDispatcher.cs:86-123](file://Protocol/JsonRpcDispatcher.cs#L86-L123)
+- [JsonRpcDispatcher.cs:33-34](file://Protocol/JsonRpcDispatcher.cs#L33-L34)
+- [JsonRpcDispatcher.cs:90-157](file://Protocol/JsonRpcDispatcher.cs#L90-L157)
 - [StdioAgentTransport.cs:95-118](file://Transport/StdioAgentTransport.cs#L95-L118)
 - [StdioAgentTransport.cs:137-145](file://Transport/StdioAgentTransport.cs#L137-L145)
 
 ## Conclusion
-The JSON-RPC protocol handling system provides a robust, asynchronous, and extensible foundation for communicating with ACP agents over stdio. The dispatcher cleanly separates transport, correlation, and routing concerns, while RequestTracker ensures reliable request/response correlation and lifecycle management. By following best practices for handler design, cancellation, and diagnostics, you can build high-performance and resilient agent integrations.
+The JSON-RPC protocol handling system provides a robust, asynchronous, and extensible foundation for communicating with ACP agents over stdio. The dispatcher cleanly separates transport, correlation, routing, and logging concerns, while RequestTracker ensures reliable request/response correlation and lifecycle management. The enhanced error handling system provides structured JSON-RPC error responses with standardized codes, and the Microsoft.Extensions.Logging integration enables comprehensive debugging and monitoring capabilities. By following best practices for handler design, cancellation, and diagnostics, you can build high-performance and resilient agent integrations with excellent observability and error handling.

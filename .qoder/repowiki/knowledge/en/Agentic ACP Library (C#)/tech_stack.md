@@ -1,1 +1,0 @@
-.NET 10 (net10.0), System.Text.Json for serialization, Microsoft.Extensions.Logging.Abstractions for logging, Microsoft.Extensions.DependencyInjection.Abstractions for optional DI — all consumed as a single NuGet package.

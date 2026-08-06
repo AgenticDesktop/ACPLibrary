@@ -6,4 +6,6 @@ scope:
     - Infrastructure/ServiceCollectionExtensions.cs
 source_files: []
 depends_on: []
-related_to: []
+related_to:
+    - path: agent
+    - path: client

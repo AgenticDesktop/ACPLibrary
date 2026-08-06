@@ -1,1 +1,0 @@
-.NET with `System.Text.Json` for serialization, `TaskCompletionSource` with `RunContinuationsAsynchronously` for async request tracking, and `ConcurrentDictionary` for thread-safe handler/request registries.

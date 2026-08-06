@@ -7,5 +7,5 @@ source_files: []
 depends_on: []
 related_to:
     - path: agent
-    - path: json_rpc
-    - path: protocol
+    - path: infrastructure
+    - path: tests

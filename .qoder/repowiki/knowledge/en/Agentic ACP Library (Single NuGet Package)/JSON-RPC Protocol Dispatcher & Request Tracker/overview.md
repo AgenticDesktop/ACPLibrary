@@ -1,0 +1,1 @@
+Implements the JSON-RPC protocol layer that serializes requests/notifications, routes incoming messages to registered handlers, and correlates pending requests with responses over an IAgentTransport.
