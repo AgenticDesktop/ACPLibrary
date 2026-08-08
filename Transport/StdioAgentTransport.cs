@@ -10,6 +10,7 @@ public sealed class StdioAgentTransport : IAgentTransport
     private readonly string _command;
     private readonly string _arguments;
     private readonly string? _workingDirectory;
+    private readonly IReadOnlyDictionary<string, string>? _environment;
     private Process? _process;
     private TransportState _state = TransportState.Created;
     private CancellationTokenSource? _readCts;
@@ -20,11 +21,16 @@ public sealed class StdioAgentTransport : IAgentTransport
     public event Func<Exception, Task>? TransportFaulted;
     public event Func<int, Task>? ProcessExited;
 
-    public StdioAgentTransport(string command, string arguments, string? workingDirectory = null)
+    public StdioAgentTransport(
+        string command,
+        string arguments,
+        string? workingDirectory = null,
+        IReadOnlyDictionary<string, string>? environment = null)
     {
         _command = command;
         _arguments = arguments;
         _workingDirectory = workingDirectory;
+        _environment = environment;
     }
 
     public Task StartAsync(CancellationToken cancellationToken = default)
@@ -47,6 +53,14 @@ public sealed class StdioAgentTransport : IAgentTransport
             StandardOutputEncoding = System.Text.Encoding.UTF8,
             StandardErrorEncoding = System.Text.Encoding.UTF8
         };
+
+        if (_environment is not null)
+        {
+            foreach (var (key, value) in _environment)
+            {
+                startInfo.Environment[key] = value;
+            }
+        }
 
         _process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
         _process.Exited += OnProcessExited;

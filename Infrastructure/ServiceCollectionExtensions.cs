@@ -1,6 +1,7 @@
 using Agentic.ACPLibrary.Agent;
 using Agentic.ACPLibrary.Client;
 using Agentic.ACPLibrary.Protocol;
+using Agentic.ACPLibrary.Registry;
 using Agentic.ACPLibrary.Transport;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -34,6 +35,17 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAcpAgentHandler, THandler>();
         services.AddSingleton<AcpAgent>();
         services.AddSingleton<IAcpAgent>(sp => sp.GetRequiredService<AcpAgent>());
+        return services;
+    }
+
+    /// <summary>
+    /// Registers ACP registry services (index fetching and installed-agent detection) into the DI container.
+    /// Unlike client/agent registration, this is additive and can coexist with either.
+    /// </summary>
+    public static IServiceCollection AddAcpRegistry(this IServiceCollection services)
+    {
+        services.AddSingleton<IAcpRegistryClient, AcpRegistryClient>();
+        services.AddSingleton<IInstalledAgentLocator, InstalledAgentLocator>();
         return services;
     }
 }
