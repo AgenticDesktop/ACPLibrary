@@ -6,9 +6,9 @@
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
     <PackageId>ShihaoShen.Agentic.ACPLibrary</PackageId>
-    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionPrefix>0.2.0</VersionPrefix>
     <Authors>Shihao Shen</Authors>
-    <Description>ACP (Agent Communication Protocol) client library for .NET. Provides JSON-RPC 2.0 transport, session management, and extensible handler interfaces for building ACP-compatible client applications.</Description>
+    <Description>ACP library for .NET.</Description>
     <PackageTags>acp;agent;json-rpc;protocol;client</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
