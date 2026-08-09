@@ -15,6 +15,7 @@ namespace Agentic.ACPLibrary.Models;
 [JsonDerivedType(typeof(ToolCallUpdateNotification), "tool_call_update")]
 [JsonDerivedType(typeof(PlanUpdate), "plan")]
 [JsonDerivedType(typeof(UsageUpdate), "usage_update")]
+[JsonDerivedType(typeof(AvailableCommandsUpdate), "available_commands_update")]
 public class SessionUpdate
 {
     [JsonPropertyName("sessionId")]
@@ -115,4 +116,38 @@ public class UsageUpdate : SessionUpdate
 
     [JsonPropertyName("size")]
     public long Size { get; set; }
+}
+
+public class AvailableCommandsUpdate : SessionUpdate
+{
+    [JsonPropertyName("availableCommands")]
+    public List<AvailableCommand> AvailableCommands { get; set; } = new();
+}
+
+public class AvailableCommand
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("description")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Description { get; set; }
+
+    [JsonPropertyName("input")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AvailableCommandInput? Input { get; set; }
+}
+
+public class AvailableCommandInput
+{
+    [JsonPropertyName("unstructured")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AvailableCommandUnstructuredInput? Unstructured { get; set; }
+}
+
+public class AvailableCommandUnstructuredInput
+{
+    [JsonPropertyName("hint")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Hint { get; set; }
 }
