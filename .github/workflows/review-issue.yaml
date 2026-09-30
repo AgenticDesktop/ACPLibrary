@@ -1,9 +1,9 @@
 name: Review issue
 
 on:
-  issues:
+  issue_comment:
     types:
-      - opened
+      - created
 
 jobs:
   review:
