@@ -1,0 +1,26 @@
+name: Review issue
+
+on:
+  issues:
+    types:
+      - opened
+
+jobs:
+  review:
+    
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install OpenCode
+        run: |
+          curl -fsSL https://opencode.ai/install | bash
+
+      - name: Review PR
+        run: |
+          opencode run -m opencode/big-pickle "Please review issue ${{ github.event.issue.number }}. Comment using GitHub CLI."
